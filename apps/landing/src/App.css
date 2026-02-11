@@ -1,0 +1,30 @@
+.landing {
+  text-align: center;
+  padding: 2rem;
+}
+
+h1 {
+  font-size: 4rem;
+  margin-bottom: 1rem;
+}
+
+p {
+  font-size: 1.5rem;
+  opacity: 0.8;
+}
+
+.cta {
+  margin-top: 2rem;
+  padding: 1rem 2rem;
+  font-size: 1.2rem;
+  background: #007bff;
+  color: white;
+  border: none;
+  border-radius: 8px;
+  cursor: pointer;
+  font-weight: 600;
+}
+
+.cta:hover {
+  background: #0056b3;
+}

@@ -84,7 +84,7 @@ export const subscribeToUserData = (userId: string, callback: (data: any) => voi
                 xp: footballConfig.xp || data.xp || 0,
                 careerPoints: footballConfig.careerPoints || data.careerPoints || 0,
                 // Map careerMode back to old structure for compatibility
-                activeWorldCupMode: footballConfig.careerMode?.type || data.activeWorldCupMode,
+                activeWorldCupMode: footballConfig.careerMode?.type || data.activeWorldCupMode || null,
                 worldCupProgress: footballConfig.careerMode?.progress || data.worldCupProgress,
                 worldCupHistory: footballConfig.careerMode?.history || data.worldCupHistory || [],
                 qualifiersProgress: footballConfig.careerMode?.type === 'qualifiers' ? footballConfig.careerMode.progress : data.qualifiersProgress,

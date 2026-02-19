@@ -1,0 +1,6 @@
+{
+  "name": "Plyon",
+  "description": "Punto de recuperación. Versión estable con todas las funcionalidades (Social, Stats, Carrera, IA).",
+  "version": "4.2.1-prod",
+  "requestFramePermissions": []
+}

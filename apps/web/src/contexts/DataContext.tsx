@@ -453,7 +453,7 @@ export const DataProvider: React.FC<{ children: ReactNode; initialData?: any; re
           endDate: new Date().toISOString()
       };
       await updatePlayerProfile({ 
-          activeWorldCupMode: null, 
+          activeWorldCupMode: undefined, 
           qualifiersProgress: null,
           qualifiersHistory: [...(playerProfile.qualifiersHistory || []), history as any]
       });
@@ -470,7 +470,7 @@ export const DataProvider: React.FC<{ children: ReactNode; initialData?: any; re
           results: []
       };
       await updatePlayerProfile({ 
-          activeWorldCupMode: null, 
+          activeWorldCupMode: undefined, 
           worldCupProgress: null,
           worldCupHistory: [...(playerProfile.worldCupHistory || []), history as any]
       });
@@ -529,7 +529,7 @@ export const DataProvider: React.FC<{ children: ReactNode; initialData?: any; re
           });
       }
       await updatePlayerProfile({ 
-          activeWorldCupMode: null, 
+          activeWorldCupMode: undefined, 
           worldCupProgress: null,
           worldCupHistory: [...(playerProfile.worldCupHistory || []), {
               campaignNumber: playerProfile.worldCupProgress!.campaignNumber,
@@ -574,7 +574,7 @@ export const DataProvider: React.FC<{ children: ReactNode; initialData?: any; re
               await updatePlayerProfile({ careerPoints: (playerProfile.careerPoints || 0) + (progress.isQualified ? 50 : 10) }); 
           } else if (progress.groupStage.matchesPlayed === 3) {
                 await updatePlayerProfile({ 
-                    activeWorldCupMode: null, worldCupProgress: null, 
+                    activeWorldCupMode: undefined, worldCupProgress: null, 
                     worldCupHistory: [...(playerProfile.worldCupHistory || []), { 
                         campaignNumber: progress.campaignNumber, finalStage: 'eliminated_group', status: 'eliminated', 
                         startDate: progress.startDate, endDate: new Date().toISOString(), results: [...(progress.matchesByStage.group?.map(m => m.result) || [])],
@@ -598,7 +598,7 @@ export const DataProvider: React.FC<{ children: ReactNode; initialData?: any; re
               }
           } else {
                 await updatePlayerProfile({ 
-                    activeWorldCupMode: null, worldCupProgress: null, 
+                    activeWorldCupMode: undefined, worldCupProgress: null, 
                     worldCupHistory: [...(playerProfile.worldCupHistory || []), { 
                         campaignNumber: progress.campaignNumber, finalStage: progress.currentStage, status: 'eliminated', 
                         startDate: progress.startDate, endDate: new Date().toISOString(), results: [],

@@ -27,6 +27,11 @@ const WorldCupPage: React.FC = () => {
   const { playerProfile, startNewWorldCupCampaign, startNewQualifiersCampaign, abandonWorldCupCampaign, isShareMode, updatePlayerProfile } = useData();
   const { isTutorialSeen, markTutorialAsSeen } = useTutorial('worldcup');
   
+  // DEBUG: Ver qué llega
+  console.log("🔍 WorldCupPage playerProfile:", playerProfile);
+  console.log("🔍 activeWorldCupMode:", playerProfile?.activeWorldCupMode);
+  console.log("🔍 qualifiersProgress:", playerProfile?.qualifiersProgress);
+  
   const [isConfederationModalOpen, setIsConfederationModalOpen] = useState(false);
   const [isAbandonConfirmOpen, setIsAbandonConfirmOpen] = useState(false);
   const [isTutorialOpen, setIsTutorialOpen] = useState(!isTutorialSeen && !isShareMode);

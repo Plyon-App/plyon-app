@@ -187,20 +187,12 @@ export const overwriteCloudData = async (userId: string, data: any) => {
 
 export const updateProfile = async (userId: string, data: Partial<PlayerProfileData>) => {
     if (!db) return;
+    // Flatten data to update top-level user doc fields if they match
+    const updateData: any = { ...data };
+    // Also update specific playerProfile object if using nested structure
+    updateData.playerProfile = data; 
     
-    // Filtrar campos obsoletos que no deberían guardarse
-    const { 
-        activeWorldCupMode, 
-        worldCupProgress, 
-        worldCupHistory,
-        qualifiersProgress,
-        qualifiersHistory,
-        ...cleanData 
-    } = data as any;
-    
-    const updateData: any = { ...cleanData };
-    
-    // Search fields
+    // Search fields maintenance
     if (data.name) updateData.searchName = data.name.toLowerCase();
     if (data.username) updateData.searchUsername = data.username.toLowerCase();
 

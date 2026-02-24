@@ -1,6 +1,8 @@
 
 import React, { useState, useEffect, useCallback } from 'react';
 import { useTheme } from '../contexts/ThemeContext';
+import SportMenuDropdown from './SportMenuDropdown';
+import SportSelectorModal from './modals/SportSelectorModal';
 import { useData } from '../contexts/DataContext';
 import { useAuth } from '../contexts/AuthContext';
 import { SunIcon } from './icons/SunIcon';
@@ -25,11 +27,12 @@ import NotificationCenter from './notifications/NotificationCenter';
 
 const Header: React.FC = () => {
   const { theme, toggleTheme } = useTheme();
-  const { currentPage, setCurrentPage, playerProfile, hasUnreadNotifications } = useData();
+  const { currentPage, setCurrentPage, playerProfile, hasUnreadNotifications, activeSports, addActiveSport } = useData();
   const { user } = useAuth();
   const [isMenuOpen, setIsMenuOpen] = useState(false);
   const [isAnimatingOut, setIsAnimatingOut] = useState(false);
   const [isDesktop, setIsDesktop] = useState(window.innerWidth >= 992);
+  const [isSportModalOpen, setIsSportModalOpen] = useState(false);
   const [hoveredButton, setHoveredButton] = useState<string | null>(null);
   const [isLoginModalOpen, setIsLoginModalOpen] = useState(false);
   const [isNotificationCenterOpen, setIsNotificationCenterOpen] = useState(false);
@@ -254,6 +257,7 @@ const Header: React.FC = () => {
         <div style={styles.rightSection}>
           {isDesktop && (
             <nav style={styles.desktopNav}>
+              <SportMenuDropdown onOpenModal={() => setIsSportModalOpen(true)} />
               {navLinks.map(({ page, label, icon }) => {
                   const isActive = currentPage === page;
                   const buttonStateStyle = getNavButtonStyle(page, isActive);
@@ -354,5 +358,11 @@ const Header: React.FC = () => {
     </>
   );
 };
+      <SportSelectorModal 
+        isOpen={isSportModalOpen} 
+        onClose={() => setIsSportModalOpen(false)} 
+        activeSports={activeSports} 
+        onAddSport={addActiveSport} 
+      />
 
 export default Header;

@@ -1,7 +1,7 @@
 
 import React, { createContext, useContext, useState, useEffect, ReactNode } from 'react';
 import { useLocalStorage } from '../hooks/useLocalStorage';
-import type { Match, Goal, CustomAchievement, AIInteraction, PlayerProfileData, Tournament, Notification, FriendRequest, PendingMatch, SocialActivity } from '../types';
+import type { Match, Goal, SportType, CustomAchievement, AIInteraction, PlayerProfileData, Tournament, Notification, FriendRequest, PendingMatch, SocialActivity } from '../types';
 import { initialData } from '../data/initialData';
 import { useAuth } from './AuthContext';
 import * as firebaseService from '../services/firebaseService';
@@ -44,6 +44,10 @@ interface DataContextType {
   forceSync: () => void;
   isReadOnly: boolean;
   isShareMode: boolean;
+  currentSport: SportType;
+  setCurrentSport: (sport: SportType) => void;
+  activeSports: SportType[];
+  addActiveSport: (sport: SportType) => void;
   loading: boolean;
   notifications: Notification[];
   pendingMatches: PendingMatch[];
@@ -79,6 +83,14 @@ export const DataProvider: React.FC<{ children: ReactNode; initialData?: any; re
   const { user } = useAuth();
   
   const [matches, setMatches] = useLocalStorage<Match[]>('matches', initialData.matches);
+  const [currentSport, setCurrentSport] = useLocalStorage<SportType>("currentSport", "football");
+  const [activeSports, setActiveSports] = useLocalStorage<SportType[]>("activeSports", ["football"]);
+
+  const addActiveSport = (sport: SportType) => {
+    if (!activeSports.includes(sport)) {
+      setActiveSports([...activeSports, sport]);
+    }
+  };
   const [goals, setGoals] = useLocalStorage<Goal[]>('goals', initialData.goals);
   const [customAchievements, setCustomAchievements] = useLocalStorage<CustomAchievement[]>('customAchievements', initialData.customAchievements);
   const [aiInteractions, setAiInteractions] = useLocalStorage<AIInteraction[]>('aiInteractions', initialData.aiInteractions);
@@ -720,6 +732,7 @@ export const DataProvider: React.FC<{ children: ReactNode; initialData?: any; re
       importJsonData, importCsvData, importMatchesFromAI, checkAILimit, aiUsageCount, AI_MONTHLY_LIMIT,
       currentPage, setCurrentPage, resetApp, syncState, forceSync, isReadOnly: readOnlyMode,
       isShareMode: readOnlyMode,
+      currentSport, setCurrentSport, activeSports, addActiveSport,
       loading: false, notifications, pendingMatches, friendRequests, hasUnreadNotifications,
       markNotificationsAsRead, clearAllNotifications, confirmPendingMatch, respondToFriendRequest, deleteNotification,
       generateShareLink, startNewWorldCupCampaign, abandonQualifiers, abandonWorldCupCampaign,

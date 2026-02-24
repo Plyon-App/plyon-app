@@ -355,14 +355,14 @@ const Header: React.FC = () => {
       
       <NotificationCenter isOpen={isNotificationCenterOpen} onClose={() => setIsNotificationCenterOpen(false)} />
       <LoginModal isOpen={isLoginModalOpen} onClose={() => setIsLoginModalOpen(false)} />
-    </>
-  );
-};
       <SportSelectorModal 
         isOpen={isSportModalOpen} 
         onClose={() => setIsSportModalOpen(false)} 
         activeSports={activeSports} 
         onAddSport={addActiveSport} 
       />
+    </>
+  );
+};
 
 export default Header;

@@ -19,6 +19,7 @@ import SettingsPage from './pages/SettingsPage';
 import TablePage from './pages/TablePage';
 import SocialPage from './pages/SocialPage';
 import WorldCupPage from './pages/WorldCupPage';
+import DesignSystemDemo from './components/DesignSystemDemo';
 import OnboardingPage from './pages/OnboardingPage';
 import { MigrationPage } from './pages/MigrationPage';
 import LandingPage from './pages/LandingPage';
@@ -139,6 +140,8 @@ const MainAppContent: React.FC = () => {
       case 'progress': return <ProgressPage />;
       case 'social': return <SocialPage />;
       case 'coach': return <CoachPage />;
+    if (currentPage === 'demo') return <DesignSystemDemo />;
+
       case 'worldcup': return <WorldCupPage />;
       case 'settings': return <SettingsPage />;
       case 'season_recap': return <SeasonRecapPage />; // NEW CASE

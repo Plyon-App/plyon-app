@@ -1,7 +1,7 @@
 
 import React from 'react';
 
-export type Page = 'landing' | 'recorder' | 'stats' | 'table' | 'duels' | 'progress' | 'social' | 'coach' | 'worldcup' | 'settings' | 'admin' | 'season_recap';
+export type Page = 'landing' | 'recorder' | 'stats' | 'table' | 'duels' | 'progress' | 'social' | 'coach' | 'worldcup' | 'settings' | 'admin' | 'season_recap' | 'demo';
 export type SportType = 'football' | 'paddle' | 'tennis';
 
 export type MatchResult = 'VICTORIA' | 'EMPATE' | 'DERROTA';

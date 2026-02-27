@@ -327,6 +327,7 @@ const Header: React.FC = () => {
               </div>
               <button onClick={handleCloseMenu} style={styles.iconButton} aria-label="Cerrar menú">
                 <CloseIcon color={theme.colors.primaryText} size={28} />
+              <SportMenuDropdown onOpenModal={() => { setIsSportModalOpen(true); setIsMenuOpen(false); }} isMobile />
               </button>
             </div>
             <nav style={styles.mobileNav}>

@@ -23,13 +23,30 @@ import SectionHelp from '../components/common/SectionHelp';
 import { MILESTONES } from '../data/milestones';
 import { SparklesIcon } from '../components/icons/SparklesIcon';
 import { useHaptics } from '../hooks/useHaptics';
+import TennisRecorder from '../components/tennis/TennisRecorder';
+import TennisMatchList from '../components/tennis/TennisMatchList';
 
 const RecorderPage: React.FC = () => {
   const { theme } = useTheme();
-  const { matches, addMatch, updateMatch, deleteMatch, playerProfile, updatePlayerProfile, availableTournaments, addQualifiersMatch, addWorldCupMatch, setCurrentPage } = useData();
+  const { matches, addMatch, updateMatch, deleteMatch, playerProfile, updatePlayerProfile, availableTournaments, addQualifiersMatch, addWorldCupMatch, addGrandSlamMatch, setCurrentPage, currentSport } = useData();
   const { isTutorialSeen, markTutorialAsSeen } = useTutorial('recorder');
   const haptics = useHaptics();
   
+  const { activeGrandSlamMode, grandSlamProgress } = playerProfile;
+
+  const grandSlamTournamentName = useMemo(() => {
+      if (!activeGrandSlamMode || !grandSlamProgress) return undefined;
+      const current = grandSlamProgress.currentTournament;
+      if (current === 'completed') return undefined;
+      
+      const names: Record<string, string> = {
+          'australian_open': 'Australian Open',
+          'roland_garros': 'Roland Garros',
+          'wimbledon': 'Wimbledon',
+          'us_open': 'US Open'
+      };
+      return names[current as string];
+  }, [activeGrandSlamMode, grandSlamProgress]);
   const [error, setError] = useState<string | null>(null);
   const [isDesktop, setIsDesktop] = useState(window.innerWidth >= 992);
   const [lastAddedMatch, setLastAddedMatch] = useState<Match | null>(null);
@@ -53,10 +70,20 @@ const RecorderPage: React.FC = () => {
   const [tournamentFilter, setTournamentFilter] = useState<string>('ALL');
   const [sortBy, setSortBy] = useState<MatchSortByType>('date_desc');
 
+  const isTennisOrPaddle = currentSport === 'tennis' || currentSport === 'paddle';
+
+  const sportMatches = useMemo(() => {
+    if (isTennisOrPaddle) {
+        return matches.filter(m => m.sport === currentSport);
+    } else {
+        return matches.filter(m => !m.sport || m.sport === 'football');
+    }
+  }, [matches, currentSport, isTennisOrPaddle]);
+
   const availableYears = useMemo(() => {
-      const yearSet = new Set(matches.map(m => parseLocalDate(m.date).getFullYear()));
+      const yearSet = new Set(sportMatches.map(m => parseLocalDate(m.date).getFullYear()));
       return Array.from(yearSet).sort((a, b) => Number(b) - Number(a));
-  }, [matches]);
+  }, [sportMatches]);
 
   const [selectedYear, setSelectedYear] = useState<string | 'all'>('all');
 
@@ -114,7 +141,8 @@ const RecorderPage: React.FC = () => {
   }, []);
   
   const filteredAndSortedMatches = useMemo(() => {
-    let processedMatches = [...matches];
+    let processedMatches = [...sportMatches];
+
     if (selectedYear !== 'all') {
         processedMatches = processedMatches.filter(m => parseLocalDate(m.date).getFullYear().toString() === selectedYear);
     }
@@ -139,7 +167,7 @@ const RecorderPage: React.FC = () => {
       }
     });
     return processedMatches;
-  }, [matches, resultFilter, sortBy, tournamentFilter, selectedYear]);
+  }, [sportMatches, resultFilter, sortBy, tournamentFilter, selectedYear]);
 
   const checkMilestones = (newTotalMatches: number) => {
       const seen = playerProfile.tutorialsSeen || {};
@@ -167,9 +195,13 @@ const RecorderPage: React.FC = () => {
         setError(null);
         let newMatch: Match;
         const { activeWorldCupMode } = playerProfile;
-        if (activeWorldCupMode === 'qualifiers' && addQualifiersMatch) {
+        
+        // Only apply special modes for football
+        if (isTennisOrPaddle && activeGrandSlamMode && addGrandSlamMatch) {
+            newMatch = await addGrandSlamMatch(data);
+        } else if (!isTennisOrPaddle && activeWorldCupMode === 'qualifiers' && addQualifiersMatch) {
             newMatch = await addQualifiersMatch(data);
-        } else if (activeWorldCupMode === 'campaign' && addWorldCupMatch) {
+        } else if (!isTennisOrPaddle && activeWorldCupMode === 'campaign' && addWorldCupMatch) {
             newMatch = await addWorldCupMatch(data);
         } else {
             newMatch = await addMatch(data);
@@ -268,11 +300,19 @@ const RecorderPage: React.FC = () => {
             <button onClick={() => setIsTutorialOpen(true)} style={styles.infoButton} aria-label="Mostrar guía"><InfoIcon color={theme.colors.secondaryText} /></button>
           </div>
           
-          <MatchForm 
-            onAddMatch={handleAddMatch} 
-            allPlayers={allPlayers} 
-            availableTournaments={availableTournaments} 
-          />
+          {isTennisOrPaddle ? (
+            <TennisRecorder 
+                onAddMatch={handleAddMatch}
+                availableTournaments={availableTournaments}
+                prefilledTournament={grandSlamTournamentName}
+            />
+          ) : (
+            <MatchForm 
+                onAddMatch={handleAddMatch} 
+                allPlayers={allPlayers} 
+                availableTournaments={availableTournaments} 
+            />
+          )}
         </div>
         <div style={styles.listContainer}>
           {error && <p style={styles.errorText} role="alert">{error}</p>}
@@ -286,10 +326,19 @@ const RecorderPage: React.FC = () => {
           <div style={styles.controlsContainer}>
             <MatchListControls resultFilter={resultFilter} setResultFilter={setResultFilter} sortBy={sortBy} setSortBy={setSortBy} isDesktop={isDesktop} availableTournaments={availableTournaments} tournamentFilter={tournamentFilter} setTournamentFilter={setTournamentFilter} years={availableYears} selectedYear={selectedYear} onSelectYear={setSelectedYear} />
           </div>
-          <MatchList matches={filteredAndSortedMatches} allMatches={sportMatches} allPlayers={allPlayers} onDeleteMatch={handleDeleteMatchClick} onEditMatch={handleEditMatch} sortBy={sortBy} isReadOnly={false} onImportClick={handleImportClick} />
+          
+          {isTennisOrPaddle ? (
+            <TennisMatchList 
+                matches={filteredAndSortedMatches} 
+                onDeleteMatch={handleDeleteMatchClick}
+                isReadOnly={false}
+            />
+          ) : (
+            <MatchList matches={filteredAndSortedMatches} allMatches={matches} allPlayers={allPlayers} onDeleteMatch={handleDeleteMatchClick} onEditMatch={handleEditMatch} sortBy={sortBy} isReadOnly={false} onImportClick={handleImportClick} />
+          )}
         </div>
       </main>
-      {lastAddedMatch && ( <PostMatchModal match={lastAddedMatch} matches={sportMatches} onClose={handleCloseModal} playerProfile={playerProfile} /> )}
+      {lastAddedMatch && ( <PostMatchModal match={lastAddedMatch} matches={matches} onClose={handleCloseModal} playerProfile={playerProfile} /> )}
       {matchToEdit && ( <EditMatchModal isOpen={!!matchToEdit} onClose={() => setMatchToEdit(null)} onSave={handleSaveEdit} match={matchToEdit} allPlayers={allPlayers} availableTournaments={availableTournaments} /> )}
       <ConfirmationModal isOpen={!!matchToDelete} onClose={() => setMatchToDelete(null)} onConfirm={confirmDeleteMatch} title="Eliminar partido" message="¿Estás seguro de que quieres eliminar este partido? Esta acción no se puede deshacer y afectará a tus estadísticas." />
       <ProfileSetupModal isOpen={isProfileSetupOpen} onClose={() => { setIsProfileSetupOpen(false); setPendingMatchData(null); }} onComplete={handleProfileSetupComplete} />

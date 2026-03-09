@@ -117,7 +117,7 @@ const OnboardingPage: React.FC<OnboardingPageProps> = ({ onComplete }) => {
     logoContainer: { display: 'flex', alignItems: 'center', gap: theme.spacing.medium, marginBottom: '1.5rem' },
     title: { fontSize: '4rem', fontWeight: 900, margin: 0, color: theme.colors.primaryText, letterSpacing: '-2px' },
     aiText: {
-        background: `linear-gradient(135deg, ${theme.colors.accent1}, ${theme.colors.accent2})`,
+        backgroundImage: `linear-gradient(135deg, ${theme.colors.accent1}, ${theme.colors.accent2})`,
         WebkitBackgroundClip: 'text', backgroundClip: 'text', WebkitTextFillColor: 'transparent',
     },
     tagline: {

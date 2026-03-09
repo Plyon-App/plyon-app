@@ -26,6 +26,7 @@ const SportSelectorModal: React.FC<SportSelectorModalProps> = ({ isOpen, onClose
     return () => window.removeEventListener('resize', handleResize);
   }, []);
 
+  // Prevent scrolling when modal is open
   useEffect(() => {
     if (isOpen) {
       document.body.style.overflow = 'hidden';

@@ -15,6 +15,7 @@ import ShareViewModal from '../components/modals/ShareViewModal';
 import SectionHelp from '../components/common/SectionHelp';
 import { TrophyIcon } from '../components/icons/TrophyIcon';
 
+// Football Interfaces
 interface YearlyStats {
   year: number;
   matchesPlayed: number;
@@ -49,6 +50,32 @@ interface TournamentStats {
   cpm: number;
 }
 
+// Tennis Interfaces
+interface TennisYearlyStats {
+  year: number;
+  matchesPlayed: number;
+  wins: number;
+  losses: number;
+  setsWon: number;
+  setsLost: number;
+  gamesWon: number;
+  gamesLost: number;
+  winRate: number;
+}
+
+interface TennisTournamentStats {
+  name: string;
+  matchesPlayed: number;
+  wins: number;
+  losses: number;
+  setsWon: number;
+  setsLost: number;
+  gamesWon: number;
+  gamesLost: number;
+  winRate: number;
+  lastMatchDate: string;
+}
+
 const radarMetrics: { label: string; key: keyof YearlyStats }[] = [
     { label: 'PJ', key: 'matchesPlayed' },
     { label: 'V', key: 'wins' },
@@ -64,50 +91,28 @@ const radarMetrics: { label: string; key: keyof YearlyStats }[] = [
 
 const TablePage: React.FC = () => {
   const { theme } = useTheme();
-  const { matches, isShareMode } = useData();
+  const { matches, isShareMode, currentSport } = useData();
   const { isTutorialSeen, markTutorialAsSeen } = useTutorial('table');
-  const [sortConfig, setSortConfig] = useState<{ key: keyof YearlyStats; direction: 'asc' | 'desc' }>({ key: 'year', direction: 'desc' });
-  const [tournamentSortConfig, setTournamentSortConfig] = useState<{ key: keyof TournamentStats; direction: 'asc' | 'desc' }>({ key: 'points', direction: 'desc' });
   const [isDesktop, setIsDesktop] = useState(window.innerWidth >= 992);
   const [visibleYears, setVisibleYears] = useState<Set<number>>(new Set());
   const [isTutorialOpen, setIsTutorialOpen] = useState(!isTutorialSeen && !isShareMode);
-  
-  // Sync tutorial state
-  useEffect(() => {
-      if (isTutorialSeen) setIsTutorialOpen(false);
-  }, [isTutorialSeen]);
-
   const [isShareModalOpen, setIsShareModalOpen] = useState(false);
+
+  const isTennisOrPaddle = currentSport === 'tennis' || currentSport === 'paddle';
+
+  // Sorting state
+  const [sortConfig, setSortConfig] = useState<{ key: string; direction: 'asc' | 'desc' }>({ key: 'year', direction: 'desc' });
+  const [tournamentSortConfig, setTournamentSortConfig] = useState<{ key: string; direction: 'asc' | 'desc' }>({ key: isTennisOrPaddle ? 'matchesPlayed' : 'points', direction: 'desc' });
+
   const yearlyTableRef = useRef<HTMLDivElement>(null);
   const [isYearlyTableScrollable, setIsYearlyTableScrollable] = useState(false);
   const tournamentTableRef = useRef<HTMLDivElement>(null);
   const [isTournamentTableScrollable, setIsTournamentTableScrollable] = useState(false);
 
-  const tutorialSteps = [
-    {
-        title: 'TABLA anual',
-        content: 'Tu carrera temporada a temporada. Analiza tus puntos, efectividad y promedios de gol en un formato de liga clásico.',
-        icon: <TableIcon size={48} />,
-    },
-    {
-        title: 'Perfil de RADAR',
-        content: 'Visualiza tu estilo de juego. Activa o desactiva años en la leyenda para comparar tu evolución y detectar tus puntos fuertes.',
-        icon: <ActivityIcon size={48} />,
-    },
-    {
-        title: 'Récords históricos',
-        content: 'En la parte superior verás tus mejores marcas históricas. Intenta superarlas en la temporada actual.',
-        icon: <TableIcon size={48} />,
-    }
-  ];
-
-  const tableGuide = [
-      { title: "Tu carrera como liga", content: "Cada año cuenta como un equipo en una tabla de posiciones. Compara tus temporadas para ver cuándo tuviste tu 'Prime'.", icon: <TableIcon size={48} /> }
-  ];
-
-  const tournamentGuide = [
-      { title: "Competencias", content: "Si etiquetas tus partidos con nombres de torneos, aquí verás el desglose específico de cada uno.", icon: <TrophyIcon size={48} /> }
-  ];
+  // Sync tutorial state
+  useEffect(() => {
+      if (isTutorialSeen) setIsTutorialOpen(false);
+  }, [isTutorialSeen]);
 
   useEffect(() => {
     const handleResize = () => setIsDesktop(window.innerWidth >= 992);
@@ -115,9 +120,17 @@ const TablePage: React.FC = () => {
     return () => window.removeEventListener('resize', handleResize);
   }, []);
 
+  // --- DATA CALCULATION ---
+
+  const sportMatches = useMemo(() => {
+    return matches.filter(m => m.sport === currentSport || (!m.sport && currentSport === 'football'));
+  }, [matches, currentSport]);
+
+  // Football Data
   const yearlyData = useMemo(() => {
+    if (isTennisOrPaddle) return [];
     const statsByYear: Record<number, Omit<YearlyStats, 'year' | 'winRate' | 'gpm' | 'apm' | 'contributions' | 'cpm' | 'efectividad'>> = {};
-    matches.forEach(match => {
+    sportMatches.forEach(match => {
       const year = parseLocalDate(match.date).getFullYear();
       if (!statsByYear[year]) { statsByYear[year] = { matchesPlayed: 0, wins: 0, draws: 0, losses: 0, points: 0, goals: 0, assists: 0 }; }
       const yearStats = statsByYear[year];
@@ -130,12 +143,12 @@ const TablePage: React.FC = () => {
       const efectividad = matchesPlayed > 0 ? (points / (matchesPlayed * 3)) * 100 : 0;
       return { ...stats, year: Number(year), winRate: matchesPlayed > 0 ? (wins / matchesPlayed) * 100 : 0, gpm: matchesPlayed > 0 ? goals / matchesPlayed : 0, apm: matchesPlayed > 0 ? assists / matchesPlayed : 0, contributions: goals + assists, cpm: matchesPlayed > 0 ? (goals + assists) / matchesPlayed : 0, efectividad };
     });
-  }, [matches]);
+  }, [sportMatches, isTennisOrPaddle]);
 
   const tournamentData = useMemo(() => {
+    if (isTennisOrPaddle) return [];
     const statsByTournament: Record<string, Omit<TournamentStats, 'name' | 'winRate' | 'gpm' | 'apm' | 'contributions' | 'cpm' | 'efectividad'>> = {};
-    matches.forEach(match => {
-        // Updated Logic: If a match has a tournament name, it counts. No more filtering by matchMode.
+    sportMatches.forEach(match => {
         if (match.tournament && match.tournament.trim() !== '') {
             const tournamentName = match.tournament;
             if (!statsByTournament[tournamentName]) { statsByTournament[tournamentName] = { matchesPlayed: 0, wins: 0, draws: 0, losses: 0, points: 0, goals: 0, assists: 0 }; }
@@ -150,47 +163,144 @@ const TablePage: React.FC = () => {
         const efectividad = matchesPlayed > 0 ? (points / (matchesPlayed * 3)) * 100 : 0;
         return { ...stats, name, winRate: matchesPlayed > 0 ? (wins / matchesPlayed) * 100 : 0, gpm: matchesPlayed > 0 ? goals / matchesPlayed : 0, apm: matchesPlayed > 0 ? assists / matchesPlayed : 0, contributions: goals + assists, cpm: matchesPlayed > 0 ? (goals + assists) / matchesPlayed : 0, efectividad };
     });
-  }, [matches]);
-  
+  }, [sportMatches, isTennisOrPaddle]);
+
+  // Tennis Data
+  const tennisYearlyData = useMemo(() => {
+    if (!isTennisOrPaddle) return [];
+    const statsByYear: Record<number, Omit<TennisYearlyStats, 'year' | 'winRate'>> = {};
+    
+    sportMatches.forEach(match => {
+        const year = parseLocalDate(match.date).getFullYear();
+        if (!statsByYear[year]) {
+            statsByYear[year] = { matchesPlayed: 0, wins: 0, losses: 0, setsWon: 0, setsLost: 0, gamesWon: 0, gamesLost: 0 };
+        }
+        const stats = statsByYear[year];
+        stats.matchesPlayed++;
+        if (match.result === 'VICTORIA') stats.wins++;
+        else stats.losses++;
+
+        if (match.tennisScore) {
+            match.tennisScore.sets.forEach(set => {
+                stats.gamesWon += set.myGames;
+                stats.gamesLost += set.opponentGames;
+                if (set.myGames > set.opponentGames) stats.setsWon++;
+                else if (set.opponentGames > set.myGames) stats.setsLost++;
+            });
+        }
+    });
+
+    return Object.entries(statsByYear).map(([year, stats]) => ({
+        ...stats,
+        year: Number(year),
+        winRate: stats.matchesPlayed > 0 ? (stats.wins / stats.matchesPlayed) * 100 : 0
+    }));
+  }, [sportMatches, isTennisOrPaddle]);
+
+  const tennisTournamentData = useMemo(() => {
+    if (!isTennisOrPaddle) return [];
+    const statsByTournament: Record<string, Omit<TennisTournamentStats, 'name' | 'winRate' | 'lastMatchDate'>> & { lastMatchDate: string } = {} as any;
+
+    sportMatches.forEach(match => {
+        if (match.tournament && match.tournament.trim() !== '') {
+            const name = match.tournament;
+            if (!statsByTournament[name]) {
+                statsByTournament[name] = { matchesPlayed: 0, wins: 0, losses: 0, setsWon: 0, setsLost: 0, gamesWon: 0, gamesLost: 0, lastMatchDate: match.date };
+            }
+            const stats = statsByTournament[name];
+            stats.matchesPlayed++;
+            if (match.result === 'VICTORIA') stats.wins++;
+            else stats.losses++;
+
+            if (match.tennisScore) {
+                match.tennisScore.sets.forEach(set => {
+                    stats.gamesWon += set.myGames;
+                    stats.gamesLost += set.opponentGames;
+                    if (set.myGames > set.opponentGames) stats.setsWon++;
+                    else if (set.opponentGames > set.myGames) stats.setsLost++;
+                });
+            }
+            if (new Date(match.date) > new Date(stats.lastMatchDate)) {
+                stats.lastMatchDate = match.date;
+            }
+        }
+    });
+
+    return Object.entries(statsByTournament).map(([name, stats]) => ({
+        ...stats,
+        name,
+        winRate: stats.matchesPlayed > 0 ? (stats.wins / stats.matchesPlayed) * 100 : 0
+    }));
+  }, [sportMatches, isTennisOrPaddle]);
+
+  // --- MAX VALUES ---
   const maxValues = useMemo(() => {
+    if (isTennisOrPaddle) return {}; // TODO: Implement for tennis if needed
     if (yearlyData.length === 0) return {};
-    const maxes: Partial<Record<keyof YearlyStats, number>> = {};
-    const keysToCompare: (keyof YearlyStats)[] = ['matchesPlayed', 'wins', 'draws', 'losses', 'points', 'winRate', 'efectividad', 'goals', 'assists', 'gpm', 'apm', 'contributions', 'cpm'];
-    keysToCompare.forEach(key => { maxes[key] = Math.max(...yearlyData.map(d => d[key])); });
+    const maxes: any = {};
+    const keysToCompare = ['matchesPlayed', 'wins', 'draws', 'losses', 'points', 'winRate', 'efectividad', 'goals', 'assists', 'gpm', 'apm', 'contributions', 'cpm'];
+    keysToCompare.forEach(key => { maxes[key] = Math.max(...yearlyData.map(d => (d as any)[key])); });
     return maxes;
-  }, [yearlyData]);
+  }, [yearlyData, isTennisOrPaddle]);
 
   const tournamentMaxValues = useMemo(() => {
-    if (tournamentData.length === 0) return {};
-    const maxes: Partial<Record<keyof TournamentStats, number>> = {};
-    const keysToCompare: (keyof TournamentStats)[] = ['matchesPlayed', 'wins', 'draws', 'losses', 'points', 'winRate', 'efectividad', 'goals', 'assists', 'gpm', 'apm', 'contributions', 'cpm'];
-    keysToCompare.forEach(key => { maxes[key] = Math.max(...tournamentData.map(d => d[key] as number)); });
-    return maxes;
-  }, [tournamentData]);
-  
-  useEffect(() => { if (yearlyData.length > 0) { setVisibleYears(new Set(yearlyData.map(d => d.year))); } }, [yearlyData]);
+      if (isTennisOrPaddle) return {}; // TODO: Implement for tennis
+      if (tournamentData.length === 0) return {};
+      const maxes: any = {};
+      const keysToCompare = ['matchesPlayed', 'wins', 'draws', 'losses', 'points', 'winRate', 'efectividad', 'goals', 'assists', 'gpm', 'apm', 'contributions', 'cpm'];
+      keysToCompare.forEach(key => { maxes[key] = Math.max(...tournamentData.map(d => (d as any)[key])); });
+      return maxes;
+  }, [tournamentData, isTennisOrPaddle]);
 
-  const sortedYearlyData = useMemo(() => { return [...yearlyData].sort((a, b) => { const aVal = a[sortConfig.key]; const bVal = b[sortConfig.key]; if (aVal < bVal) return sortConfig.direction === 'asc' ? -1 : 1; if (aVal > bVal) return sortConfig.direction === 'asc' ? 1 : -1; return 0; }); }, [yearlyData, sortConfig]);
+  // --- SORTING ---
+  const sortedData = useMemo(() => {
+      const data = isTennisOrPaddle ? tennisYearlyData : yearlyData;
+      return [...data].sort((a, b) => {
+          const aVal = (a as any)[sortConfig.key];
+          const bVal = (b as any)[sortConfig.key];
+          if (aVal < bVal) return sortConfig.direction === 'asc' ? -1 : 1;
+          if (aVal > bVal) return sortConfig.direction === 'asc' ? 1 : -1;
+          return 0;
+      });
+  }, [yearlyData, tennisYearlyData, sortConfig, isTennisOrPaddle]);
 
-  const sortedTournamentData = useMemo(() => { return [...tournamentData].sort((a, b) => { const key = tournamentSortConfig.key; const direction = tournamentSortConfig.direction; if (key === 'name') { return direction === 'asc' ? a.name.localeCompare(b.name) : b.name.localeCompare(a.name); } const aVal = a[key]; const bVal = b[key]; if (aVal < bVal) return direction === 'asc' ? -1 : 1; if (aVal > bVal) return direction === 'asc' ? 1 : -1; return 0; }); }, [tournamentData, tournamentSortConfig]);
+  const sortedTournamentData = useMemo(() => {
+      const data = isTennisOrPaddle ? tennisTournamentData : tournamentData;
+      return [...data].sort((a, b) => {
+          const key = tournamentSortConfig.key;
+          const direction = tournamentSortConfig.direction;
+          if (key === 'name') {
+              return direction === 'asc' ? a.name.localeCompare(b.name) : b.name.localeCompare(a.name);
+          }
+          const aVal = (a as any)[key];
+          const bVal = (b as any)[key];
+          if (aVal < bVal) return direction === 'asc' ? -1 : 1;
+          if (aVal > bVal) return direction === 'asc' ? 1 : -1;
+          return 0;
+      });
+  }, [tournamentData, tennisTournamentData, tournamentSortConfig, isTennisOrPaddle]);
 
-  useEffect(() => {
-    const checkScrollable = (ref: React.RefObject<HTMLDivElement>, setScrollable: React.Dispatch<React.SetStateAction<boolean>>) => { const el = ref.current; if (el) { setScrollable(el.scrollWidth > el.clientWidth + 1); } };
-    const handleResize = () => { checkScrollable(yearlyTableRef, setIsYearlyTableScrollable); checkScrollable(tournamentTableRef, setIsTournamentTableScrollable); };
-    const timer = setTimeout(() => handleResize(), 100);
-    window.addEventListener('resize', handleResize);
-    return () => { clearTimeout(timer); window.removeEventListener('resize', handleResize); };
-  }, [sortedYearlyData, sortedTournamentData]);
+  // --- HELPERS ---
+  const requestSort = (key: string) => {
+      let direction: 'asc' | 'desc' = 'desc';
+      if (sortConfig.key === key && sortConfig.direction === 'desc') { direction = 'asc'; }
+      setSortConfig({ key, direction });
+  };
+  const requestTournamentSort = (key: string) => {
+      let direction: 'asc' | 'desc' = 'desc';
+      if (tournamentSortConfig.key === key && tournamentSortConfig.direction === 'desc') { direction = 'asc'; }
+      setTournamentSortConfig({ key, direction });
+  };
+  const getSortIndicator = (key: string, config: any) => {
+      if (config.key !== key) return null;
+      return config.direction === 'desc' ? ' ↓' : ' ↑';
+  };
 
-  const requestSort = (key: keyof YearlyStats) => { let direction: 'asc' | 'desc' = 'desc'; if (sortConfig.key === key && sortConfig.direction === 'desc') { direction = 'asc'; } setSortConfig({ key, direction }); };
-  const requestTournamentSort = (key: keyof TournamentStats) => { let direction: 'asc' | 'desc' = 'desc'; if (tournamentSortConfig.key === key && tournamentSortConfig.direction === 'desc') { direction = 'asc'; } setTournamentSortConfig({ key, direction }); };
-  const getSortIndicator = (key: keyof YearlyStats) => { if (sortConfig.key !== key) return null; return sortConfig.direction === 'desc' ? ' ↓' : ' ↑'; };
-  const getTournamentSortIndicator = (key: keyof TournamentStats) => { if (tournamentSortConfig.key !== key) return null; return tournamentSortConfig.direction === 'desc' ? ' ↓' : ' ↑'; };
-  
+  // --- RADAR CHART (Football Only) ---
   const historicalMaxValuesForRadar = useMemo(() => {
     if (yearlyData.length === 0) return radarMetrics.map(() => 1);
     const maxMatchesPlayed = Math.max(...yearlyData.map(y => y.matchesPlayed), 1);
-    return radarMetrics.map(metric => { if (['matchesPlayed', 'wins', 'draws', 'losses'].includes(metric.key)) { return maxMatchesPlayed; } if (metric.key === 'winRate' || metric.key === 'efectividad') { return 100; } return Math.max(...yearlyData.map(y => y[metric.key] as number), 1); });
+    return radarMetrics.map(metric => { if (['matchesPlayed', 'wins', 'draws', 'losses'].includes(metric.key)) { return maxMatchesPlayed; } if (metric.key === 'winRate' || metric.key === 'efectividad') { return 100; } return Math.max(...yearlyData.map(y => (y as any)[metric.key] as number), 1); });
   }, [yearlyData]);
   
   const radarChartData = useMemo(() => {
@@ -198,39 +308,52 @@ const TablePage: React.FC = () => {
     const colors = [theme.colors.accent1, theme.colors.accent2, theme.colors.accent3, theme.colors.win, theme.colors.draw, '#FF7043', '#7E57C2', '#26A69A'];
     const sortedVisibleData = [...yearlyData].sort((a,b) => b.year - a.year);
     const currentYear = new Date().getFullYear();
-    return sortedVisibleData.filter(yearStat => visibleYears.has(yearStat.year)).map((yearStat, index) => ({ name: yearStat.year.toString(), color: colors[index % colors.length], isDashed: yearStat.year === currentYear, data: radarMetrics.map(metric => ({ label: metric.label, value: yearStat[metric.key] as number })), }));
+    return sortedVisibleData.filter(yearStat => visibleYears.has(yearStat.year)).map((yearStat, index) => ({ name: yearStat.year.toString(), color: colors[index % colors.length], isDashed: yearStat.year === currentYear, data: radarMetrics.map(metric => ({ label: metric.label, value: (yearStat as any)[metric.key] as number })), }));
   }, [yearlyData, visibleYears, theme.colors]);
-  
+
+  useEffect(() => { if (yearlyData.length > 0) { setVisibleYears(new Set(yearlyData.map(d => d.year))); } }, [yearlyData]);
   const toggleYearVisibility = (year: number) => { setVisibleYears(prev => { const newSet = new Set(prev); if (newSet.has(year)) newSet.delete(year); else newSet.add(year); return newSet; }); };
 
-  const yearlyHeaders: { key: keyof YearlyStats; label: string; isNumeric: boolean }[] = [{ key: 'year', label: 'Año', isNumeric: true }, { key: 'points', label: 'Pts', isNumeric: true }, { key: 'matchesPlayed', label: 'PJ', isNumeric: true }, { key: 'wins', label: 'V', isNumeric: true }, { key: 'draws', label: 'E', isNumeric: true }, { key: 'losses', label: 'D', isNumeric: true }, { key: 'winRate', label: '% V', isNumeric: true }, { key: 'efectividad', label: 'Efect.', isNumeric: true }, { key: 'goals', label: 'G', isNumeric: true }, { key: 'assists', label: 'A', isNumeric: true }, { key: 'gpm', label: 'G/P', isNumeric: true }, { key: 'apm', label: 'A/P', isNumeric: true }, { key: 'contributions', label: 'G+A', isNumeric: true }, { key: 'cpm', label: 'G+A/P', isNumeric: true },];
-  const tournamentHeaders: { key: keyof TournamentStats; label: string; isNumeric: boolean }[] = [{ key: 'name', label: 'Torneo', isNumeric: false }, { key: 'points', label: 'Pts', isNumeric: true }, { key: 'matchesPlayed', label: 'PJ', isNumeric: true }, { key: 'wins', label: 'V', isNumeric: true }, { key: 'draws', label: 'E', isNumeric: true }, { key: 'losses', label: 'D', isNumeric: true }, { key: 'winRate', label: '% V', isNumeric: true }, { key: 'efectividad', label: 'Efect.', isNumeric: true }, { key: 'goals', label: 'G', isNumeric: true }, { key: 'assists', label: 'A', isNumeric: true }, { key: 'gpm', label: 'G/P', isNumeric: true }, { key: 'apm', label: 'A/P', isNumeric: true },];
-  
+  // --- HEADERS ---
+  const footballYearlyHeaders = [{ key: 'year', label: 'Año' }, { key: 'points', label: 'Pts' }, { key: 'matchesPlayed', label: 'PJ' }, { key: 'wins', label: 'V' }, { key: 'draws', label: 'E' }, { key: 'losses', label: 'D' }, { key: 'winRate', label: '% V' }, { key: 'efectividad', label: 'Efect.' }, { key: 'goals', label: 'G' }, { key: 'assists', label: 'A' }, { key: 'gpm', label: 'G/P' }, { key: 'apm', label: 'A/P' }, { key: 'contributions', label: 'G+A' }, { key: 'cpm', label: 'G+A/P' }];
+  const footballTournamentHeaders = [{ key: 'name', label: 'Torneo' }, { key: 'points', label: 'Pts' }, { key: 'matchesPlayed', label: 'PJ' }, { key: 'wins', label: 'V' }, { key: 'draws', label: 'E' }, { key: 'losses', label: 'D' }, { key: 'winRate', label: '% V' }, { key: 'efectividad', label: 'Efect.' }, { key: 'goals', label: 'G' }, { key: 'assists', label: 'A' }, { key: 'gpm', label: 'G/P' }, { key: 'apm', label: 'A/P' }];
+
+  const tennisYearlyHeaders = [
+      { key: 'year', label: 'Año' },
+      { key: 'matchesPlayed', label: 'PJ' },
+      { key: 'wins', label: 'V' },
+      { key: 'losses', label: 'D' },
+      { key: 'setsWon', label: 'Sets W' },
+      { key: 'setsLost', label: 'Sets L' },
+      { key: 'gamesWon', label: 'Games W' },
+      { key: 'gamesLost', label: 'Games L' },
+      { key: 'winRate', label: '% Vic' }
+  ];
+
+  const tennisTournamentHeaders = [
+      { key: 'name', label: 'Torneo' },
+      { key: 'matchesPlayed', label: 'PJ' },
+      { key: 'wins', label: 'V' },
+      { key: 'losses', label: 'D' },
+      { key: 'setsWon', label: 'Sets W' },
+      { key: 'setsLost', label: 'Sets L' },
+      { key: 'gamesWon', label: 'Games W' },
+      { key: 'gamesLost', label: 'Games L' },
+      { key: 'winRate', label: '% Vic' }
+  ];
+
+  const currentYearlyHeaders = isTennisOrPaddle ? tennisYearlyHeaders : footballYearlyHeaders;
+  const currentTournamentHeaders = isTennisOrPaddle ? tennisTournamentHeaders : footballTournamentHeaders;
+
   const styles: { [key: string]: React.CSSProperties } = {
     container: { maxWidth: '1200px', margin: '0 auto', padding: `${theme.spacing.extraLarge} ${theme.spacing.medium}`, display: 'flex', flexDirection: 'column', gap: theme.spacing.large },
     header: { display: 'flex', alignItems: 'center', gap: theme.spacing.medium },
     headerButtons: { display: 'flex', alignItems: 'center', gap: theme.spacing.small },
     infoButton: { background: 'none', border: 'none', cursor: 'pointer', padding: 0, display: 'flex', alignItems: 'center' },
     pageTitle: { fontSize: theme.typography.fontSize.extraLarge, fontWeight: 700, color: theme.colors.primaryText, margin: 0, borderLeft: `4px solid ${theme.colors.accent1}`, paddingLeft: theme.spacing.medium, display: 'flex', alignItems: 'center' },
-    
-    contentWrapper: { 
-        display: 'flex',
-        flexDirection: 'column', 
-        gap: theme.spacing.extraLarge, 
-        alignItems: 'stretch',
-        width: '100%'
-    },
-    rightColumn: { 
-        display: 'flex', 
-        flexDirection: 'column', 
-        gap: theme.spacing.large, 
-        minWidth: 0, 
-        width: '100%' 
-    },
-    chartColumn: { 
-        width: '100%' 
-    },
-    
+    contentWrapper: { display: 'flex', flexDirection: 'column', gap: theme.spacing.extraLarge, alignItems: 'stretch', width: '100%' },
+    rightColumn: { display: 'flex', flexDirection: 'column', gap: theme.spacing.large, minWidth: 0, width: '100%' },
+    chartColumn: { width: '100%' },
     scrollWrapper: { position: 'relative' },
     tableWrapper: { minWidth: 0, overflowX: 'auto', backgroundColor: theme.colors.surface, borderRadius: theme.borderRadius.large, border: `1px solid ${theme.colors.border}`, boxShadow: theme.shadows.medium },
     table: { borderCollapse: 'collapse', width: '100%' },
@@ -247,19 +370,18 @@ const TablePage: React.FC = () => {
     fadeOverlay: { position: 'absolute', top: 0, right: 0, height: '100%', width: '60px', background: `linear-gradient(to left, ${theme.colors.surface}, transparent)`, pointerEvents: 'none', borderRadius: theme.borderRadius.large },
   };
 
-  if (matches.length === 0) { return ( <main style={styles.container}> <h2 style={styles.pageTitle}>Mi rendimiento anual</h2> <div style={styles.noDataContainer}> <TableIcon size={40} color={theme.colors.secondaryText} /> <p style={{ marginTop: theme.spacing.medium }}>Juega y registra partidos para ver tu evolución en la tabla.</p> </div> </main> ) }
+  const tutorialSteps = [
+    { title: 'TABLA anual', content: 'Tu carrera temporada a temporada.', icon: <TableIcon size={48} /> },
+    { title: 'Récords históricos', content: 'Tus mejores marcas.', icon: <TableIcon size={48} /> }
+  ];
+  const tableGuide = [{ title: "Tu carrera", content: "Compara tus temporadas.", icon: <TableIcon size={48} /> }];
+  const tournamentGuide = [{ title: "Competencias", content: "Desglose por torneo.", icon: <TrophyIcon size={48} /> }];
+
+  if (sportMatches.length === 0) { return ( <main style={styles.container}> <h2 style={styles.pageTitle}>Mi rendimiento anual</h2> <div style={styles.noDataContainer}> <TableIcon size={40} color={theme.colors.secondaryText} /> <p style={{ marginTop: theme.spacing.medium }}>Juega y registra partidos para ver tu evolución en la tabla.</p> </div> </main> ) }
 
   return (
     <>
-    <style>{`
-      .custom-scrollbar::-webkit-scrollbar {
-        display: none;
-      }
-      .custom-scrollbar {
-        -ms-overflow-style: none;
-        scrollbar-width: none;
-      }
-    `}</style>
+    <style>{` .custom-scrollbar::-webkit-scrollbar { display: none; } .custom-scrollbar { -ms-overflow-style: none; scrollbar-width: none; } `}</style>
     <TutorialModal isOpen={isTutorialOpen} onClose={(dontShowAgain) => { setIsTutorialOpen(false); if(dontShowAgain) markTutorialAsSeen(); }} steps={tutorialSteps} />
     <ShareViewModal isOpen={isShareModalOpen} onClose={() => setIsShareModalOpen(false)} page="table" />
     <main style={styles.container}>
@@ -278,17 +400,49 @@ const TablePage: React.FC = () => {
         </div>
       </div>
       <div style={styles.contentWrapper}>
-        <div style={styles.chartColumn}>
-            {yearlyData.length > 0 && ( <Card> <div style={styles.chartAndLegendContainer}> <RadarChart playersData={radarChartData} size={isDesktop ? 350 : 300} showLegend={false} maxValues={historicalMaxValuesForRadar} /> <div style={styles.legendContainer}> {yearlyData.sort((a,b) => b.year - a.year).map((yearStat) => { const isVisible = visibleYears.has(yearStat.year); const color = radarChartData.find(d => d.name === yearStat.year.toString())?.color || theme.colors.secondaryText; return ( <button key={yearStat.year} onClick={() => toggleYearVisibility(yearStat.year)} style={{...styles.legendButton, color: isVisible ? theme.colors.primaryText : theme.colors.secondaryText, opacity: isVisible ? 1 : 0.6 }}> <span style={{...styles.legendColorBox, backgroundColor: color }}></span> {yearStat.year} </button> ); })} </div> </div> </Card> )}
-        </div>
+        
+        {/* Radar Chart - Only for Football for now */}
+        {!isTennisOrPaddle && yearlyData.length > 0 && (
+            <div style={styles.chartColumn}>
+                <Card> 
+                    <div style={styles.chartAndLegendContainer}> 
+                        <RadarChart playersData={radarChartData} size={isDesktop ? 350 : 300} showLegend={false} maxValues={historicalMaxValuesForRadar} /> 
+                        <div style={styles.legendContainer}> 
+                            {yearlyData.sort((a,b) => b.year - a.year).map((yearStat) => { 
+                                const isVisible = visibleYears.has(yearStat.year); 
+                                const color = radarChartData.find(d => d.name === yearStat.year.toString())?.color || theme.colors.secondaryText; 
+                                return ( <button key={yearStat.year} onClick={() => toggleYearVisibility(yearStat.year)} style={{...styles.legendButton, color: isVisible ? theme.colors.primaryText : theme.colors.secondaryText, opacity: isVisible ? 1 : 0.6 }}> <span style={{...styles.legendColorBox, backgroundColor: color }}></span> {yearStat.year} </button> ); 
+                            })} 
+                        </div> 
+                    </div> 
+                </Card>
+            </div>
+        )}
+
         <div style={styles.rightColumn}>
             <div style={styles.scrollWrapper}>
               <div ref={yearlyTableRef} style={styles.tableWrapper} className="custom-scrollbar">
-                  <table style={styles.table}> <thead> <tr> {yearlyHeaders.map((header, index) => ( <th key={header.key} style={{...styles.th, ...(header.isNumeric && styles.numeric), ...(index === 0 && styles.stickyColumn) }} className={index === 0 ? 'sticky-column' : ''} onClick={() => requestSort(header.key)}> {header.label} {getSortIndicator(header.key)} </th> ))} </tr> </thead> <tbody> {sortedYearlyData.map(stats => { const isMax = (key: keyof YearlyStats) => maxValues[key] !== undefined && stats[key] === maxValues[key] && (maxValues[key] as number) > 0; const maxStyle: React.CSSProperties = { fontWeight: 700, color: theme.colors.win }; return ( <tr key={stats.year} style={styles.tr} className="table-row"> <td style={{...styles.td, ...styles.numeric, fontWeight: 700, ...styles.stickyColumn}} className="sticky-column">{stats.year}</td>
-                                    {yearlyHeaders.slice(1).map(header => (
-                                        <td key={header.key} style={{...styles.td, ...(header.isNumeric && styles.numeric), ...(isMax(header.key) ? maxStyle : {})}}>
+                  <table style={styles.table}> 
+                    <thead> 
+                        <tr> 
+                            {currentYearlyHeaders.map((header, index) => ( 
+                                <th key={header.key} style={{...styles.th, ...(index > 0 && styles.numeric), ...(index === 0 && styles.stickyColumn) }} className={index === 0 ? 'sticky-column' : ''} onClick={() => requestSort(header.key)}> 
+                                    {header.label} {getSortIndicator(header.key, sortConfig)} 
+                                </th> 
+                            ))} 
+                        </tr> 
+                    </thead> 
+                    <tbody> 
+                        {sortedData.map((stats: any) => { 
+                            const maxStyle: React.CSSProperties = { fontWeight: 700, color: theme.colors.win }; 
+                            // Max value highlighting logic could be added here if needed
+                            return ( 
+                                <tr key={stats.year} style={styles.tr} className="table-row"> 
+                                    <td style={{...styles.td, ...styles.numeric, fontWeight: 700, ...styles.stickyColumn}} className="sticky-column">{stats.year}</td>
+                                    {currentYearlyHeaders.slice(1).map(header => (
+                                        <td key={header.key} style={{...styles.td, ...styles.numeric}}>
                                             {header.key === 'winRate' || header.key === 'efectividad' ? `${stats[header.key].toFixed(1)}%` : 
-                                             header.key === 'gpm' || header.key === 'apm' || header.key === 'cpm' ? stats[header.key].toFixed(2) :
+                                             header.key.includes('pm') ? stats[header.key].toFixed(2) :
                                              stats[header.key]}
                                         </td>
                                     ))}
@@ -301,7 +455,7 @@ const TablePage: React.FC = () => {
             {isYearlyTableScrollable && <div style={styles.fadeOverlay} />}
         </div>
 
-        {tournamentData.length > 0 && (
+        {sortedTournamentData.length > 0 && (
             <div style={{ marginTop: theme.spacing.extraLarge }}>
                 <h3 style={{...styles.pageTitle, fontSize: '1.2rem'}}>Por Torneo <SectionHelp steps={tournamentGuide} /></h3>
                 <div style={styles.scrollWrapper}>
@@ -309,24 +463,22 @@ const TablePage: React.FC = () => {
                         <table style={styles.table}>
                             <thead>
                                 <tr>
-                                    {tournamentHeaders.map((header) => (
-                                        <th key={header.key} style={{...styles.th, ...(header.isNumeric && styles.numeric)}} onClick={() => requestTournamentSort(header.key)}>
-                                            {header.label} {getTournamentSortIndicator(header.key)}
+                                    {currentTournamentHeaders.map((header, index) => (
+                                        <th key={header.key} style={{...styles.th, ...(index > 0 && styles.numeric)}} onClick={() => requestTournamentSort(header.key)}>
+                                            {header.label} {getSortIndicator(header.key, tournamentSortConfig)}
                                         </th>
                                     ))}
                                 </tr>
                             </thead>
                             <tbody>
-                                {sortedTournamentData.map(stats => {
-                                    const isMax = (key: keyof TournamentStats) => tournamentMaxValues[key] !== undefined && stats[key] === tournamentMaxValues[key] && (tournamentMaxValues[key] as number) > 0;
-                                    const maxStyle: React.CSSProperties = { fontWeight: 700, color: theme.colors.win };
+                                {sortedTournamentData.map((stats: any) => {
                                     return (
                                         <tr key={stats.name} style={styles.tr} className="table-row">
                                             <td style={styles.td}>{stats.name}</td>
-                                            {tournamentHeaders.slice(1).map(header => (
-                                                <td key={header.key} style={{...styles.td, ...(header.isNumeric && styles.numeric), ...(isMax(header.key) ? maxStyle : {})}}>
+                                            {currentTournamentHeaders.slice(1).map(header => (
+                                                <td key={header.key} style={{...styles.td, ...styles.numeric}}>
                                                     {header.key === 'winRate' || header.key === 'efectividad' ? `${(stats[header.key] as number).toFixed(1)}%` : 
-                                                     header.key === 'gpm' || header.key === 'apm' || header.key === 'cpm' ? (stats[header.key] as number).toFixed(2) :
+                                                     header.key.includes('pm') ? (stats[header.key] as number).toFixed(2) :
                                                      stats[header.key]}
                                                 </td>
                                             ))}

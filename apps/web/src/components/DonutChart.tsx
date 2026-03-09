@@ -47,7 +47,6 @@ const DonutChart: React.FC<DonutChartProps> = ({ data }) => {
 
   const radius = 45;
   const circumference = 2 * Math.PI * radius;
-  let accumulatedLength = 0;
 
   return (
     <div style={styles.chartContainer}>
@@ -58,6 +57,8 @@ const DonutChart: React.FC<DonutChartProps> = ({ data }) => {
           
           {validData.map((item, index) => {
             const segmentLength = (item.value / total) * circumference;
+            const currentOffset = validData.slice(0, index).reduce((acc, curr) => acc + (curr.value / total) * circumference, 0);
+            
             // Keyframes will be generated for each segment
             const animationKeyframes = `
               @keyframes draw-segment-${index} {
@@ -71,11 +72,9 @@ const DonutChart: React.FC<DonutChartProps> = ({ data }) => {
             `;
             const segmentStyle: React.CSSProperties = {
               strokeDasharray: `0 ${circumference}`, // Initial state for animation
-              strokeDashoffset: -accumulatedLength,
+              strokeDashoffset: -currentOffset,
               animation: `draw-segment-${index} 0.8s ${index * 0.15}s cubic-bezier(0.34, 1.56, 0.64, 1) forwards`, // Added bounce easing
             };
-            
-            accumulatedLength += segmentLength;
             
             return (
               <React.Fragment key={index}>

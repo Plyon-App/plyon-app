@@ -19,12 +19,11 @@ import SettingsPage from './pages/SettingsPage';
 import TablePage from './pages/TablePage';
 import SocialPage from './pages/SocialPage';
 import WorldCupPage from './pages/WorldCupPage';
-import DesignSystemDemo from './components/DesignSystemDemo';
 import OnboardingPage from './pages/OnboardingPage';
-import { MigrationPage } from './pages/MigrationPage';
 import LandingPage from './pages/LandingPage';
 import AdminPage from './pages/AdminPage';
 import SeasonRecapPage from './pages/SeasonRecapPage'; // NEW PAGE
+import GrandSlamPage from './pages/tennis/GrandSlamPage';
 import { Loader } from './components/Loader';
 import DashboardSkeleton from './components/skeletons/DashboardSkeleton'; // NEW SKELETON
 import SyncBanner from './components/SyncBanner';
@@ -37,8 +36,49 @@ import IncomingMatchesNotifier from './components/notifications/IncomingMatchesN
 import type { Page } from './types';
 
 const MainAppContent: React.FC = () => {
-  const { theme } = useTheme();
+  const { theme, setSport } = useTheme();
   
+  const { currentPage, setCurrentPage, loading: dataLoading, isOnboardingComplete, completeOnboarding, isShareMode, currentSport } = useData();
+  const { loading: authLoading, user } = useAuth();
+  
+  const [isLoginModalOpen, setIsLoginModalOpen] = useState(false);
+  const [isPendingMatchesModalOpen, setIsPendingMatchesModalOpen] = useState(false);
+  const [isDesktop, setIsDesktop] = useState(window.innerWidth >= 992);
+
+  useEffect(() => {
+    if (setSport && currentSport) {
+      setSport(currentSport);
+    }
+  }, [currentSport, setSport]);
+
+  useEffect(() => {
+    const handleResize = () => setIsDesktop(window.innerWidth >= 992);
+    window.addEventListener('resize', handleResize);
+    return () => window.removeEventListener('resize', handleResize);
+  }, []);
+
+  // Initial Routing Logic
+  useEffect(() => {
+    if (!currentPage) {
+        // If logged in or onboarding done -> Recorder
+        if (user || isOnboardingComplete) {
+            setCurrentPage('recorder');
+        } else {
+            // New user -> Landing Page
+            setCurrentPage('landing');
+        }
+    }
+  }, [currentPage, setCurrentPage, user, isOnboardingComplete]);
+
+  // Handle Invitation Code Check (Global persistence for login flow)
+  useEffect(() => {
+      const params = new URLSearchParams(window.location.search);
+      const inviteCode = params.get('invite');
+      if (inviteCode && !user) {
+          localStorage.setItem('pendingInviteCode', inviteCode);
+      }
+  }, [user]);
+
   if (initializationError || !firebaseApp) {
       return (
           <div style={{
@@ -73,41 +113,6 @@ const MainAppContent: React.FC = () => {
       );
   }
 
-  const { currentPage, setCurrentPage, loading: dataLoading, isOnboardingComplete, completeOnboarding, isShareMode } = useData();
-  const { loading: authLoading, user } = useAuth();
-  
-  const [isLoginModalOpen, setIsLoginModalOpen] = useState(false);
-  const [isPendingMatchesModalOpen, setIsPendingMatchesModalOpen] = useState(false);
-  const [isDesktop, setIsDesktop] = useState(window.innerWidth >= 992);
-
-  useEffect(() => {
-    const handleResize = () => setIsDesktop(window.innerWidth >= 992);
-    window.addEventListener('resize', handleResize);
-    return () => window.removeEventListener('resize', handleResize);
-  }, []);
-
-  // Initial Routing Logic
-  useEffect(() => {
-    if (!currentPage) {
-        // If logged in or onboarding done -> Recorder
-        if (user || isOnboardingComplete) {
-            setCurrentPage('recorder');
-        } else {
-            // New user -> Landing Page
-            setCurrentPage('landing');
-        }
-    }
-  }, [currentPage, setCurrentPage, user, isOnboardingComplete]);
-
-  // Handle Invitation Code Check (Global persistence for login flow)
-  useEffect(() => {
-      const params = new URLSearchParams(window.location.search);
-      const inviteCode = params.get('invite');
-      if (inviteCode && !user) {
-          localStorage.setItem('pendingInviteCode', inviteCode);
-      }
-  }, [user]);
-
   const styles: { [key: string]: React.CSSProperties } = {
     appContainer: {
       minHeight: '100vh',
@@ -140,11 +145,10 @@ const MainAppContent: React.FC = () => {
       case 'progress': return <ProgressPage />;
       case 'social': return <SocialPage />;
       case 'coach': return <CoachPage />;
-    if (currentPage === 'demo') return <DesignSystemDemo />;
-
       case 'worldcup': return <WorldCupPage />;
       case 'settings': return <SettingsPage />;
       case 'season_recap': return <SeasonRecapPage />; // NEW CASE
+      case 'grand_slam': return <GrandSlamPage />;
       case 'recorder': default: return <RecorderPage />;
     }
   };
@@ -167,10 +171,6 @@ const MainAppContent: React.FC = () => {
   }
 
   // If Admin Page, render full screen without standard chrome
-  if (currentPage === 'migration') {
-      return <MigrationPage />;
-  }
-
   if (currentPage === 'admin') {
       return (
         <div style={styles.appContainer}>
@@ -214,15 +214,10 @@ const MainAppContent: React.FC = () => {
 };
 
 const App: React.FC = () => {
-  const [shareId, setShareId] = useState<string | null>(null);
-
-  useEffect(() => {
+  const [shareId, setShareId] = useState<string | null>(() => {
     const params = new URLSearchParams(window.location.search);
-    const id = params.get('shareId');
-    if (id) {
-        setShareId(id);
-    }
-  }, []);
+    return params.get('shareId');
+  });
 
   if (shareId) {
       return <SharedViewLoader shareId={shareId} />;

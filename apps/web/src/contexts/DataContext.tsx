@@ -1,14 +1,13 @@
 
 import React, { createContext, useContext, useState, useEffect, ReactNode } from 'react';
 import { useLocalStorage } from '../hooks/useLocalStorage';
-import type { Match, Goal, SportType, CustomAchievement, AIInteraction, PlayerProfileData, Tournament, Notification, FriendRequest, PendingMatch, SocialActivity } from '../types';
+import type { Match, Goal, CustomAchievement, AIInteraction, PlayerProfileData, Tournament, Notification, FriendRequest, PendingMatch, SocialActivity, SportType } from '../types';
 import { initialData } from '../data/initialData';
 import { useAuth } from './AuthContext';
 import * as firebaseService from '../services/firebaseService';
 import { CONFEDERATIONS, calculateHistoricalRecords, generateQualifiersStandings } from '../utils/analytics';
 import { v4 as uuidv4 } from 'uuid';
 import { db } from '../firebase/config'; // Importar db para verificar si existe
-import { doc, setDoc } from 'firebase/firestore';
 
 interface DataContextType {
   matches: Match[];
@@ -44,10 +43,6 @@ interface DataContextType {
   forceSync: () => void;
   isReadOnly: boolean;
   isShareMode: boolean;
-  currentSport: SportType;
-  setCurrentSport: (sport: SportType) => void;
-  activeSports: SportType[];
-  addActiveSport: (sport: SportType) => void;
   loading: boolean;
   notifications: Notification[];
   pendingMatches: PendingMatch[];
@@ -64,8 +59,10 @@ interface DataContextType {
   abandonWorldCupCampaign: () => Promise<void>;
   startWorldCupFromQualification: () => Promise<void>;
   startNewQualifiersCampaign: (conf: any) => Promise<void>;
+  startNewGrandSlamSeason: () => Promise<void>;
   clearChampionCampaign: () => Promise<void>;
   addWorldCupMatch: (matchData: Omit<Match, 'id'>) => Promise<Match>;
+  addGrandSlamMatch: (matchData: Omit<Match, 'id'>) => Promise<Match>;
   addQualifiersMatch: (matchData: Omit<Match, 'id'>) => Promise<Match>;
   resolveConflict: (choice: 'local' | 'cloud') => Promise<void>;
   dataConflict: boolean;
@@ -75,6 +72,10 @@ interface DataContextType {
   recalculateStats: () => Promise<void>;
   activeRecapData: any | null; // Nuevo estado
   openSeasonRecap: (data: any) => void; // Nueva función
+  currentSport: SportType;
+  setCurrentSport: (sport: SportType) => void;
+  activeSports: SportType[];
+  addActiveSport: (sport: SportType) => void;
 }
 
 const DataContext = createContext<DataContextType | undefined>(undefined);
@@ -83,14 +84,6 @@ export const DataProvider: React.FC<{ children: ReactNode; initialData?: any; re
   const { user } = useAuth();
   
   const [matches, setMatches] = useLocalStorage<Match[]>('matches', initialData.matches);
-  const [currentSport, setCurrentSport] = useLocalStorage<SportType>("currentSport", "football");
-  const [activeSports, setActiveSports] = useLocalStorage<SportType[]>("activeSports", ["football"]);
-
-  const addActiveSport = (sport: SportType) => {
-    if (!activeSports.includes(sport)) {
-      setActiveSports([...activeSports, sport]);
-    }
-  };
   const [goals, setGoals] = useLocalStorage<Goal[]>('goals', initialData.goals);
   const [customAchievements, setCustomAchievements] = useLocalStorage<CustomAchievement[]>('customAchievements', initialData.customAchievements);
   const [aiInteractions, setAiInteractions] = useLocalStorage<AIInteraction[]>('aiInteractions', initialData.aiInteractions);
@@ -107,6 +100,16 @@ export const DataProvider: React.FC<{ children: ReactNode; initialData?: any; re
   const [friendRequests, setFriendRequests] = useState<FriendRequest[]>([]);
   const [syncState, setSyncState] = useState<{ status: 'SYNCED' | 'SYNCING_UP' | 'SYNCING_DOWN' | 'ERROR' | 'LOCAL' | 'LOADING' | 'READ_ONLY', error?: string }>({ status: 'LOCAL' });
   const [dataConflict, setDataConflict] = useState(false);
+
+  // Sport Selection State
+  const [currentSport, setCurrentSport] = useLocalStorage<SportType>('currentSport', 'football');
+  const [activeSports, setActiveSports] = useLocalStorage<SportType[]>('activeSports', ['football']);
+
+  const addActiveSport = (sport: SportType) => {
+    if (!activeSports.includes(sport)) {
+      setActiveSports([...activeSports, sport]);
+    }
+  };
 
   const availableTournaments = tournaments.map(t => t.name);
   const hasUnreadNotifications = notifications.some(n => !n.read) || pendingMatches.length > 0 || friendRequests.length > 0;
@@ -292,63 +295,21 @@ export const DataProvider: React.FC<{ children: ReactNode; initialData?: any; re
   };
 
   const importJsonData = async (json: string) => {
-      if (!user || !db) {
-        console.error("Usuario no autenticado");
-        return;
-      }
-      
       const data = JSON.parse(json);
       if (!data.matches) throw new Error("Formato inválido");
-      
-      console.log('🚀 Importando con estructura v2...');
-      const oldProfile = data.playerProfile;
-      
-      const newProfile = {
-        uid: user.uid,
-        name: oldProfile.name,
-        username: oldProfile.username,
-        email: user.email || oldProfile.email || '',
-        dob: oldProfile.dob,
-        friends: oldProfile.friends || [],
-        lastSportPlayed: 'football' as const,
-        activeSports: ['football'] as const,
-        sports: {
-          football: {
-            level: oldProfile.level || 1,
-            xp: oldProfile.xp || 0,
-            careerPoints: oldProfile.careerPoints || 0
-          }
-        }
-      };
-      
-      await setDoc(doc(db, 'users', user.uid), newProfile);
-      
-      for (const match of data.matches) {
-        await setDoc(
-          doc(db, 'users', user.uid, 'football_activities', match.id),
-          match
-        );
-      }
-      
-      for (const t of data.tournaments || []) {
-        await setDoc(
-          doc(db, 'users', user.uid, 'football_tournaments', t.id),
-          t
-        );
-      }
-      
       setMatches(data.matches);
       setGoals(data.goals || []);
+      setCustomAchievements(data.customAchievements || []);
+      setAiInteractions(data.aiInteractions || []);
       setTournaments(data.tournaments || []);
-      setPlayerProfile(newProfile as any);
-      
-      console.log('✅ Importación completa');
-      window.location.reload();
+      setPlayerProfile(data.playerProfile || initialData.playerProfile);
+      if (user && db) await firebaseService.overwriteCloudData(user.uid, data);
   };
 
   const importCsvData = async (csv: string) => {
-      console.log("CSV import not implemented");
+      console.log("CSV import not fully implemented in this demo");
   };
+
   const importMatchesFromAI = async (newMatches: Partial<Match>[]) => {
       const completeMatches = newMatches.map(m => ({
           id: uuidv4(),
@@ -527,6 +488,108 @@ export const DataProvider: React.FC<{ children: ReactNode; initialData?: any; re
           group: selectedGroup
       };
       await updatePlayerProfile({ activeWorldCupMode: 'qualifiers', qualifiersProgress: newCampaign });
+  };
+
+  const startNewGrandSlamSeason = async () => {
+      const newSeason: any = {
+          currentTournament: 'australian_open',
+          currentRound: 'round_of_128', // Start at Round of 128 (7 matches to win)
+          seasonYear: new Date().getFullYear(),
+          startDate: new Date().toISOString(),
+          matchesHistory: {
+              australian_open: [],
+              roland_garros: [],
+              wimbledon: [],
+              us_open: []
+          },
+          completedTournaments: [],
+          status: 'active',
+          tournamentStatus: 'active'
+      };
+      await updatePlayerProfile({ activeGrandSlamMode: true, grandSlamProgress: newSeason });
+  };
+
+  const addGrandSlamMatch = async (matchData: Omit<Match, 'id'>) => {
+      if (!playerProfile.grandSlamProgress) return await addMatch(matchData);
+
+      const progress = { ...playerProfile.grandSlamProgress };
+      
+      if (progress.startDate) {
+          const matchDateStr = matchData.date.split('T')[0];
+          const startDateStr = progress.startDate.split('T')[0];
+          if (matchDateStr < startDateStr) {
+              return await addMatch(matchData);
+          }
+      }
+
+      const currentTournament = progress.currentTournament;
+      const currentRound = progress.currentRound;
+      
+      const TOURNAMENTS = ['australian_open', 'roland_garros', 'wimbledon', 'us_open'];
+      const ROUNDS = ['round_of_128', 'round_of_64', 'round_of_32', 'round_of_16', 'quarter_finals', 'semi_finals', 'final'];
+
+      // Add match to history
+      const match = await addMatch({ 
+          ...matchData, 
+          matchMode: 'world-cup', // Reusing world-cup mode for now or add 'grand-slam'
+          tournament: currentTournament.replace('_', ' ').toUpperCase()
+      });
+
+      if (!progress.matchesHistory) progress.matchesHistory = {};
+      if (!progress.matchesHistory[currentTournament]) {
+          progress.matchesHistory[currentTournament] = [];
+      }
+      progress.matchesHistory[currentTournament].push(match);
+
+      if (match.result === 'VICTORIA') {
+          // Won match
+          const roundIndex = ROUNDS.indexOf(currentRound);
+          if (roundIndex < ROUNDS.length - 1) {
+              // Advance to next round
+              progress.currentRound = ROUNDS[roundIndex + 1];
+          } else {
+              // Won the tournament (Final)
+              progress.tournamentStatus = 'champion';
+              if (!progress.completedTournaments.includes(currentTournament)) {
+                  progress.completedTournaments.push(currentTournament);
+              }
+              
+              // Move to next tournament if available
+              const tourneyIndex = TOURNAMENTS.indexOf(currentTournament);
+              if (tourneyIndex < TOURNAMENTS.length - 1) {
+                  progress.currentTournament = TOURNAMENTS[tourneyIndex + 1];
+                  progress.currentRound = ROUNDS[0]; // Reset to first round
+                  progress.tournamentStatus = 'active';
+              } else {
+                  // Season completed
+                  progress.status = 'completed_season';
+                  await updatePlayerProfile({ activeGrandSlamMode: false, grandSlamProgress: progress });
+                  return match;
+              }
+          }
+      } else {
+          // Lost match
+          progress.tournamentStatus = 'eliminated';
+          if (!progress.completedTournaments.includes(currentTournament)) {
+              progress.completedTournaments.push(currentTournament);
+          }
+          
+          // Move to next tournament if available
+          const tourneyIndex = TOURNAMENTS.indexOf(currentTournament);
+          if (tourneyIndex < TOURNAMENTS.length - 1) {
+              progress.currentTournament = TOURNAMENTS[tourneyIndex + 1];
+              progress.currentRound = ROUNDS[0]; // Reset to first round
+              progress.tournamentStatus = 'active';
+          } else {
+              // Season completed
+              progress.status = 'completed_season';
+              await updatePlayerProfile({ activeGrandSlamMode: false, grandSlamProgress: progress });
+              return match;
+          }
+      }
+
+      await updatePlayerProfile({ grandSlamProgress: progress });
+      return match;
   };
 
   const clearChampionCampaign = async () => {
@@ -732,13 +795,14 @@ export const DataProvider: React.FC<{ children: ReactNode; initialData?: any; re
       importJsonData, importCsvData, importMatchesFromAI, checkAILimit, aiUsageCount, AI_MONTHLY_LIMIT,
       currentPage, setCurrentPage, resetApp, syncState, forceSync, isReadOnly: readOnlyMode,
       isShareMode: readOnlyMode,
-      currentSport, setCurrentSport, activeSports, addActiveSport,
       loading: false, notifications, pendingMatches, friendRequests, hasUnreadNotifications,
       markNotificationsAsRead, clearAllNotifications, confirmPendingMatch, respondToFriendRequest, deleteNotification,
       generateShareLink, startNewWorldCupCampaign, abandonQualifiers, abandonWorldCupCampaign,
       startWorldCupFromQualification, startNewQualifiersCampaign, clearChampionCampaign,
       addWorldCupMatch, addQualifiersMatch, resolveConflict, dataConflict, requestNotificationPermission, availableTournaments, addNotification,
-      recalculateStats, activeRecapData, openSeasonRecap
+      recalculateStats, activeRecapData, openSeasonRecap,
+      currentSport, setCurrentSport, activeSports, addActiveSport,
+      startNewGrandSlamSeason, addGrandSlamMatch
     }}>
       {children}
     </DataContext.Provider>
@@ -752,5 +816,3 @@ export const useData = () => {
   }
   return context;
 };
-
-// ==========================================

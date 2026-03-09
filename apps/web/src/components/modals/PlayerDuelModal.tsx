@@ -27,11 +27,13 @@ interface PlayerDuelModalProps {
 
 const PlayerDuelModal: React.FC<PlayerDuelModalProps> = ({ isOpen, onClose, playerName, allMatches }) => {
   const { theme } = useTheme();
-  const { playerProfile, updatePlayerProfile } = useData();
+  const { playerProfile, updatePlayerProfile, currentSport } = useData();
   const { user } = useAuth();
   const [selectedYear, setSelectedYear] = useState<string | 'all'>('all');
   const profile = usePlayerProfile(playerName, allMatches, selectedYear);
   const isDark = theme.name === 'dark';
+  
+  const isTennisOrPaddle = currentSport === 'tennis' || currentSport === 'paddle';
   
   const [activeView, setActiveView] = useState<'teammate' | 'opponent' | null>(null);
   const [hoveredFilter, setHoveredFilter] = useState<string | null>(null);
@@ -599,8 +601,12 @@ const PlayerDuelModal: React.FC<PlayerDuelModalProps> = ({ isOpen, onClose, play
                 <div style={styles.statsGrid}>
                   <StatCard label="% Victorias" value={`${stats.winRate.toFixed(1)}%`} />
                   <StatCard label="Puntos cosechados" value={stats.points} />
-                  <StatCard label="Goles / Partido" value={stats.gpm.toFixed(2)} />
-                  <StatCard label="Asist. / Partido" value={stats.apm.toFixed(2)} />
+                  {!isTennisOrPaddle && (
+                    <>
+                      <StatCard label="Goles / Partido" value={stats.gpm.toFixed(2)} />
+                      <StatCard label="Asist. / Partido" value={stats.apm.toFixed(2)} />
+                    </>
+                  )}
                 </div>
                 
                 {stats.matches.length > 0 && (
@@ -617,8 +623,23 @@ const PlayerDuelModal: React.FC<PlayerDuelModalProps> = ({ isOpen, onClose, play
                                         <span style={styles.matchDate}>{parseLocalDate(match.date).toLocaleDateString(undefined, { day: '2-digit', month: 'short' })}</span>
                                         <div style={getResultStyle(match.result)}>{match.result.charAt(0)}</div>
                                         <div style={styles.matchStats}>
-                                            <span style={styles.matchStatItem}>⚽️ {match.myGoals}</span>
-                                            <span style={styles.matchStatItem}>👟 {match.myAssists}</span>
+                                            {isTennisOrPaddle ? (
+                                                <span style={styles.matchStatItem}>
+                                                    {match.tennisScore?.sets.map(s => {
+                                                        let score = `${s.myGames}-${s.opponentGames}`;
+                                                        if (s.tiebreak) {
+                                                            const loserPoints = s.myGames > s.opponentGames ? s.tiebreak.opponentPoints : s.tiebreak.myPoints;
+                                                            score += `(${loserPoints})`;
+                                                        }
+                                                        return score;
+                                                    }).join(', ') || 'N/A'}
+                                                </span>
+                                            ) : (
+                                                <>
+                                                    <span style={styles.matchStatItem}>⚽️ {match.myGoals}</span>
+                                                    <span style={styles.matchStatItem}>👟 {match.myAssists}</span>
+                                                </>
+                                            )}
                                         </div>
                                     </div>
                                 ))}

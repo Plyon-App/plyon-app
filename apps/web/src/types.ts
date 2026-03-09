@@ -1,7 +1,8 @@
 
 import React from 'react';
 
-export type Page = 'landing' | 'recorder' | 'stats' | 'table' | 'duels' | 'progress' | 'social' | 'coach' | 'worldcup' | 'settings' | 'admin' | 'season_recap' | 'demo';
+export type Page = 'landing' | 'recorder' | 'stats' | 'table' | 'duels' | 'progress' | 'social' | 'coach' | 'worldcup' | 'settings' | 'admin' | 'season_recap';
+
 export type SportType = 'football' | 'paddle' | 'tennis';
 
 export type MatchResult = 'VICTORIA' | 'EMPATE' | 'DERROTA';
@@ -12,10 +13,23 @@ export interface PlayerPerformance {
   assists: number;
 }
 
+export interface TennisSet {
+  myGames: number;
+  opponentGames: number;
+  tiebreak?: {
+    myPoints: number;
+    opponentPoints: number;
+  };
+}
+
+export interface TennisScore {
+  sets: TennisSet[];
+  winner: 'me' | 'opponent';
+  retired?: boolean; // If opponent or me retired
+  retiredPlayer?: 'me' | 'opponent';
+}
+
 export interface Match {
-  sport: SportType;
-  sport: SportType;
-  sport: SportType;
   sport: SportType;
   id: string;
   date: string;
@@ -30,6 +44,10 @@ export interface Match {
   myTeamPlayers?: PlayerPerformance[];
   opponentPlayers?: PlayerPerformance[];
   verified?: boolean;
+  sport?: SportType;
+  tennisScore?: TennisScore;
+  location?: string;
+  surface?: 'hard' | 'clay' | 'grass' | 'carpet';
 }
 
 export interface SocialActivity {
@@ -286,6 +304,20 @@ export interface ChatMessage {
 export type WorldCupStage = 'group' | 'round_of_16' | 'quarter_finals' | 'semi_finals' | 'final';
 export type ConfederationName = 'CONMEBOL' | 'UEFA' | 'AFC' | 'CAF' | 'CONCACAF' | 'OFC';
 
+export type GrandSlamTournament = 'australian_open' | 'roland_garros' | 'wimbledon' | 'us_open';
+export type GrandSlamRound = 'round_of_128' | 'round_of_64' | 'round_of_32' | 'round_of_16' | 'quarter_finals' | 'semi_finals' | 'final';
+
+export interface GrandSlamProgress {
+    currentTournament: GrandSlamTournament;
+    currentRound: GrandSlamRound;
+    seasonYear: number;
+    startDate?: string;
+    matchesHistory: Record<string, Match[]>; // Key is tournament name
+    completedTournaments: GrandSlamTournament[];
+    status: 'active' | 'completed_season';
+    tournamentStatus: 'active' | 'eliminated' | 'champion';
+}
+
 export interface WorldCupCampaignHistory {
     campaignNumber: number;
     finalStage: WorldCupStage | 'eliminated_group' | 'abandoned';
@@ -359,8 +391,10 @@ export interface PlayerProfileData {
   careerPoints?: number;
   tutorialsSeen?: Record<string, boolean>;
   activeWorldCupMode?: 'campaign' | 'qualifiers';
+  activeGrandSlamMode?: boolean;
   worldCupProgress?: WorldCupProgress | null;
   qualifiersProgress?: QualifiersProgress | null;
+  grandSlamProgress?: GrandSlamProgress | null;
   worldCupHistory?: WorldCupCampaignHistory[];
   qualifiersHistory?: QualifiersCampaignHistory[];
   lastFreeWorldCupDate?: string;

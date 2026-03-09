@@ -34,19 +34,21 @@ const StoryCardBase: React.FC<{ children: React.ReactNode; style?: React.CSSProp
 };
 
 // Footer for all cards
-const StoryFooter: React.FC<{ light?: boolean }> = ({ light }) => {
+const StoryFooter: React.FC<{ light?: boolean; color?: string }> = ({ light, color }) => {
     const { theme } = useTheme();
+    const footerColor = color ? color : (light ? '#fff' : theme.colors.primaryText);
     const style: React.CSSProperties = { 
         display: 'flex', 
         justifyContent: 'center', 
         alignItems: 'center', 
         gap: '0.5rem', 
-        opacity: 0.7,
-        color: light ? '#fff' : theme.colors.primaryText
+        opacity: 0.8,
+        color: footerColor,
+        marginTop: 'auto'
     };
     return (
         <footer style={style}>
-            <FootballIcon size={16} color={light ? '#fff' : undefined} />
+            <FootballIcon size={16} color={footerColor} />
             <span style={{fontSize: '0.8rem', fontWeight: 600}}>Plyon</span>
         </footer>
     );
@@ -55,82 +57,202 @@ const StoryFooter: React.FC<{ light?: boolean }> = ({ light }) => {
 // --- Story Card Variants ---
 
 const PlyrCardStory: React.FC<{ moment: ShareableMoment }> = ({ moment }) => {
-    const { theme } = useTheme();
     const { name, photo, ovr, stats } = moment.data;
     
-    // Ultimate Team Card Style
+    // --- ESTILO BLACK & GOLD ELITE ---
+    const goldColor = '#D4AF37'; // Classic Gold
+    const goldGradient = 'linear-gradient(135deg, #BF953F, #FCF6BA, #B38728, #FBF5B7, #AA771C)'; // Shining gold
+    
     const cardStyle: React.CSSProperties = {
-        background: 'linear-gradient(135deg, #d4af37 0%, #f9e587 25%, #d4af37 50%, #aa8524 100%)', // Gold gradient
-        borderRadius: '20px',
-        padding: '20px',
-        color: '#1a1a1a',
+        background: '#121212', // Deep dark background
+        backgroundImage: `
+            radial-gradient(circle at 50% 0%, #2a2a2a 0%, #000000 70%),
+            repeating-linear-gradient(45deg, rgba(255,255,255,0.03) 0px, rgba(255,255,255,0.03) 1px, transparent 1px, transparent 10px)
+        `,
+        borderRadius: '24px',
+        padding: '24px',
+        color: '#ffffff',
         fontFamily: "'Inter', sans-serif",
         display: 'flex',
         flexDirection: 'column',
         alignItems: 'center',
-        boxShadow: '0 10px 20px rgba(0,0,0,0.3)',
-        border: '4px solid #f9e587',
+        boxShadow: '0 20px 50px rgba(0,0,0,0.5), inset 0 0 0 2px #333',
+        border: `3px solid ${goldColor}`,
         height: '100%',
-        justifyContent: 'space-between',
+        justifyContent: 'flex-start', // Top align items
         position: 'relative',
         overflow: 'hidden'
     };
 
-    const photoStyle: React.CSSProperties = {
-        width: '120px',
-        height: '120px',
-        borderRadius: '50%',
-        objectFit: 'cover',
-        border: '4px solid #fff',
-        boxShadow: '0 4px 10px rgba(0,0,0,0.2)',
+    const innerBorder: React.CSSProperties = {
+        position: 'absolute',
+        top: '8px', left: '8px', right: '8px', bottom: '8px',
+        border: `1px solid ${goldColor}`,
+        borderRadius: '18px',
+        opacity: 0.5,
+        pointerEvents: 'none'
+    };
+
+    const topSection: React.CSSProperties = {
+        display: 'flex',
+        width: '100%',
+        justifyContent: 'space-between',
+        alignItems: 'flex-start',
+        marginTop: '10px',
         marginBottom: '10px',
-        backgroundColor: '#fff'
+        position: 'relative',
+        zIndex: 2
+    };
+
+    const ratingContainer: React.CSSProperties = {
+        display: 'flex',
+        flexDirection: 'column',
+        alignItems: 'flex-start',
+        paddingLeft: '10px'
+    };
+
+    const ratingValue: React.CSSProperties = {
+        fontSize: '3.5rem',
+        fontWeight: 900,
+        lineHeight: 0.9,
+        background: goldGradient,
+        WebkitBackgroundClip: 'text',
+        WebkitTextFillColor: 'transparent',
+    };
+
+    const ratingLabel: React.CSSProperties = {
+        fontSize: '1.2rem',
+        fontWeight: 700,
+        textTransform: 'uppercase',
+        color: goldColor,
+        letterSpacing: '2px'
+    };
+
+    const photoStyle: React.CSSProperties = {
+        width: '160px',
+        height: '160px',
+        objectFit: 'cover',
+        // Efecto de recorte moderno en lugar de borde circular simple
+        maskImage: 'linear-gradient(to bottom, black 80%, transparent 100%)',
+        WebkitMaskImage: 'linear-gradient(to bottom, black 80%, transparent 100%)',
+        filter: 'drop-shadow(0 0 15px rgba(212, 175, 55, 0.3))', // Gold glow
+        marginRight: '-10px', // Pull slight right
+        marginTop: '10px'
+    };
+
+    const infoSection: React.CSSProperties = {
+        textAlign: 'center',
+        width: '100%',
+        zIndex: 2,
+        marginTop: 'auto',
+        marginBottom: 'auto'
+    };
+
+    const playerNameStyle: React.CSSProperties = {
+        fontSize: '1.8rem',
+        fontWeight: 800,
+        textTransform: 'uppercase',
+        letterSpacing: '1px',
+        color: '#fff',
+        textShadow: '0 2px 10px rgba(0,0,0,0.5)',
+        margin: '0',
+        paddingBottom: '5px'
+    };
+
+    const dividerStyle: React.CSSProperties = {
+        height: '2px',
+        width: '80%',
+        background: goldGradient,
+        margin: '5px auto 20px auto',
+        borderRadius: '2px',
+        opacity: 0.8
     };
 
     const statsGrid: React.CSSProperties = {
         display: 'grid',
         gridTemplateColumns: '1fr 1fr',
-        gap: '10px 30px',
-        width: '100%',
-        marginTop: '15px'
+        gap: '8px 20px',
+        width: '90%',
+        margin: '0 auto'
     };
 
-    const statItem: React.CSSProperties = {
+    const statRow: React.CSSProperties = {
         display: 'flex',
         justifyContent: 'space-between',
-        fontSize: '1.1rem',
-        fontWeight: 700
+        alignItems: 'center',
+        borderBottom: '1px solid rgba(255,255,255,0.1)',
+        paddingBottom: '4px'
+    };
+
+    const statValue: React.CSSProperties = {
+        fontSize: '1.3rem',
+        fontWeight: 800,
+        color: goldColor, // Gold numbers
+    };
+
+    const statLabel: React.CSSProperties = {
+        fontSize: '0.9rem',
+        fontWeight: 600,
+        color: '#aaa', // Muted labels
+        textTransform: 'uppercase'
     };
 
     return (
-        <StoryCardBase>
+        <StoryCardBase style={{background: '#000', padding: 0}}>
             <div style={cardStyle}>
-                {/* Gloss effect */}
-                <div style={{position: 'absolute', top: 0, left: 0, right: 0, height: '40%', background: 'linear-gradient(to bottom, rgba(255,255,255,0.4) 0%, rgba(255,255,255,0) 100%)', pointerEvents: 'none'}} />
+                <div style={innerBorder} />
                 
-                <div style={{display: 'flex', width: '100%', justifyContent: 'space-between', alignItems: 'flex-start', position: 'relative', zIndex: 1}}>
-                    <div style={{display: 'flex', flexDirection: 'column', alignItems: 'center'}}>
-                        <span style={{fontSize: '2.5rem', fontWeight: 900, lineHeight: 1}}>{ovr}</span>
-                        <span style={{fontSize: '1rem', fontWeight: 700}}>OVR</span>
+                {/* Background Glow behind head */}
+                <div style={{
+                    position: 'absolute', 
+                    top: '15%', 
+                    left: '50%', 
+                    transform: 'translateX(-50%)', 
+                    width: '180px', 
+                    height: '180px', 
+                    background: 'radial-gradient(circle, rgba(212, 175, 55, 0.2) 0%, transparent 70%)', 
+                    zIndex: 0
+                }} />
+
+                <div style={topSection}>
+                    <div style={ratingContainer}>
+                        <span style={ratingValue}>{ovr}</span>
+                        <span style={ratingLabel}>OVR</span>
+                        <div style={{marginTop: '10px', display: 'flex', flexDirection: 'column'}}>
+                             <span style={{fontSize: '0.7rem', color: '#888', textTransform: 'uppercase'}}>Nivel</span>
+                             <span style={{fontSize: '1.2rem', fontWeight: 'bold', color: '#fff'}}>{stats.Nvl}</span>
+                        </div>
                     </div>
-                    <img src={photo || `https://ui-avatars.com/api/?name=${name}&background=random`} alt={name} style={photoStyle} />
+                    <img 
+                        src={photo || `https://ui-avatars.com/api/?name=${name}&background=random`} 
+                        alt={name} 
+                        style={photoStyle} 
+                    />
                 </div>
 
-                <div style={{textAlign: 'center', width: '100%', zIndex: 1}}>
-                    <h2 style={{fontSize: '1.8rem', fontWeight: 900, margin: '5px 0', textTransform: 'uppercase', letterSpacing: '-1px'}}>{name}</h2>
-                    <div style={{width: '100%', height: '2px', backgroundColor: '#aa8524', margin: '10px 0'}} />
+                <div style={infoSection}>
+                    <h2 style={playerNameStyle}>{name}</h2>
+                    <div style={dividerStyle} />
                     
                     <div style={statsGrid}>
-                        <div style={statItem}><span>{stats.PJ}</span> <span style={{fontWeight: 400}}>PJ</span></div>
-                        <div style={statItem}><span>{stats.G}</span> <span style={{fontWeight: 400}}>G</span></div>
-                        <div style={statItem}><span>{stats.A}</span> <span style={{fontWeight: 400}}>A</span></div>
-                        <div style={statItem}><span>{stats.V}%</span> <span style={{fontWeight: 400}}>VIC</span></div>
-                        <div style={statItem}><span>{stats.Nvl}</span> <span style={{fontWeight: 400}}>NVL</span></div>
-                        <div style={statItem}><span>{stats.Pts}</span> <span style={{fontWeight: 400}}>PTS</span></div>
+                        {/* Left Column */}
+                        <div style={{display: 'flex', flexDirection: 'column', gap: '8px'}}>
+                            <div style={statRow}><span style={statLabel}>PJ</span> <span style={statValue}>{stats.PJ}</span></div>
+                            <div style={statRow}><span style={statLabel}>Gol</span> <span style={statValue}>{stats.G}</span></div>
+                            <div style={statRow}><span style={statLabel}>Asis</span> <span style={statValue}>{stats.A}</span></div>
+                        </div>
+                        {/* Right Column */}
+                        <div style={{display: 'flex', flexDirection: 'column', gap: '8px'}}>
+                            <div style={statRow}><span style={statLabel}>Vic</span> <span style={statValue}>{stats.V}%</span></div>
+                            <div style={statRow}><span style={statLabel}>Pts</span> <span style={statValue}>{stats.Pts}</span></div>
+                            <div style={statRow}><span style={statLabel}>Forma</span> <span style={{...statValue, fontSize: '1rem'}}>🔥🔥</span></div>
+                        </div>
                     </div>
                 </div>
                 
-                <div style={{marginTop: 'auto', paddingTop: '10px', opacity: 0.8, fontSize: '0.8rem', fontWeight: 600}}>PLYON PLYR</div>
+                <div style={{marginBottom: '10px', zIndex: 2}}>
+                    <StoryFooter light={true} color={goldColor} />
+                </div>
             </div>
         </StoryCardBase>
     );

@@ -10,6 +10,7 @@ import { ShareIcon } from '../icons/ShareIcon';
 import { Loader } from '../Loader';
 import { DownloadIcon } from '../icons/DownloadIcon';
 import { PlayerIcon } from '../icons/PlayerIcon';
+import { CareerIcon } from '../icons/CareerIcon';
 import { FootballIcon } from '../icons/FootballIcon';
 import { useData } from '../../contexts/DataContext';
 
@@ -123,7 +124,7 @@ const ShareableImageCard = forwardRef<HTMLDivElement, ShareableImageCardProps>((
                 {campaignContext && (
                     <div style={styles.campaignBanner}>
                         <div style={styles.campaignTitleContainer}>
-                            <PlayerIcon size={20} color={theme.colors.accent1} />
+                            <CareerIcon size={20} color={theme.colors.accent1} sport={match.sport || 'football'} />
                             <h4 style={styles.campaignTitle}>MODO CARRERA</h4>
                         </div>
                         <p style={styles.campaignName}>{campaignContext.name}</p>
@@ -495,7 +496,7 @@ const PostMatchModal: React.FC<PostMatchModalProps> = ({ match, matches, onClose
                     {campaignContext && (
                         <div style={styles.campaignBanner}>
                             <div style={styles.campaignTitleContainer}>
-                                <PlayerIcon size={20} color={theme.colors.accent1} />
+                                <CareerIcon size={20} color={theme.colors.accent1} sport={match.sport || 'football'} />
                                 <h4 style={styles.campaignTitle}>MODO CARRERA</h4>
                             </div>
                             <p style={styles.campaignName}>{campaignContext.name}</p>

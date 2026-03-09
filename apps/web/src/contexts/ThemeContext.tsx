@@ -36,7 +36,7 @@ const darkTheme = {
   name: 'dark',
   ...designSystem,
   colors: {
-    background: '#121829', // Midnight Blue (Previous style)
+    background: '#121829', // Midnight Blue
     backgroundGradient: 'linear-gradient(180deg, #121829 0%, #0F1322 100%)',
     surface: '#1A2238', // Lighter Midnight
     primaryText: '#FFFFFF',
@@ -84,14 +84,59 @@ const lightTheme = {
   }
 };
 
+const tennisDarkTheme = {
+  ...darkTheme,
+  colors: {
+    ...darkTheme.colors,
+    background: '#336699',
+    backgroundGradient: 'linear-gradient(180deg, #336699 0%, #254E75 100%)',
+    surface: '#2A5580',
+    primaryText: '#FFFFFF',
+    secondaryText: '#E2E8F0',
+    border: '#4A7FB8',
+    borderStrong: '#5C8BC2',
+    accent1: '#c6ed2c',
+    accent2: '#339966',
+    accent3: '#993300',
+    win: '#339966',
+    loss: '#993300',
+    draw: '#FFC107',
+    textOnAccent: '#1A202C',
+  }
+};
+
+const tennisLightTheme = {
+  ...lightTheme,
+  colors: {
+    ...lightTheme.colors,
+    background: '#fefff3',
+    backgroundGradient: 'linear-gradient(180deg, #fefff3 0%, #F5F7EB 100%)',
+    surface: '#FFFFFF',
+    primaryText: '#101828',
+    secondaryText: '#667085',
+    border: '#E4E7EC',
+    borderStrong: '#D0D5DD',
+    accent1: '#c6ed2c',
+    accent2: '#339966',
+    accent3: '#993300',
+    win: '#339966',
+    loss: '#993300',
+    draw: '#3538CD',
+    textOnAccent: '#101828',
+  }
+};
+
 type Theme = typeof darkTheme;
 type ThemePreference = 'light' | 'dark' | 'system';
+
+import { SportType } from '../types';
 
 interface ThemeContextType {
   theme: Theme;
   toggleTheme: () => void;
   themePreference: ThemePreference;
   setThemePreference: (preference: ThemePreference) => void;
+  setSport: (sport: SportType) => void;
 }
 
 const ThemeContext = createContext<ThemeContextType | undefined>(undefined);
@@ -106,6 +151,7 @@ const getSystemTheme = (): 'dark' | 'light' => {
 export const ThemeProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
   const [themePreference, setThemePreference] = useLocalStorage<ThemePreference>('theme-preference', 'system');
   const [systemTheme, setSystemTheme] = useState<'dark' | 'light'>(getSystemTheme);
+  const [sport, setSport] = useState<SportType>('football');
 
   useEffect(() => {
     const mediaQuery = window.matchMedia('(prefers-color-scheme: dark)');
@@ -121,7 +167,15 @@ export const ThemeProvider: React.FC<{ children: React.ReactNode }> = ({ childre
     return themePreference === 'system' ? systemTheme : themePreference;
   }, [themePreference, systemTheme]);
 
-  const theme = useMemo(() => (effectiveThemeName === 'dark' ? darkTheme : lightTheme), [effectiveThemeName]);
+  const theme = useMemo(() => {
+    const baseTheme = effectiveThemeName === 'dark' ? darkTheme : lightTheme;
+    
+    if (sport === 'tennis' || sport === 'paddle') {
+        return effectiveThemeName === 'dark' ? tennisDarkTheme : tennisLightTheme;
+    }
+    
+    return baseTheme;
+  }, [effectiveThemeName, sport]);
 
   const toggleTheme = () => {
     const newTheme = effectiveThemeName === 'dark' ? 'light' : 'dark';
@@ -133,7 +187,8 @@ export const ThemeProvider: React.FC<{ children: React.ReactNode }> = ({ childre
     toggleTheme,
     themePreference,
     setThemePreference: (p: ThemePreference) => setThemePreference(p),
-  }), [theme, themePreference, setThemePreference]);
+    setSport,
+  }), [theme, themePreference, setThemePreference, setSport]);
   
   return (
     <ThemeContext.Provider value={value}>

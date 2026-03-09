@@ -35,6 +35,7 @@ const AutocompleteInput: React.FC<AutocompleteInputProps> = ({ value = '', onCha
       width: '100%', boxSizing: 'border-box', padding: theme.spacing.small, backgroundColor: theme.colors.background,
       border: `1px solid ${theme.colors.borderStrong}`, borderRadius: theme.borderRadius.medium, color: theme.colors.primaryText,
       fontSize: theme.typography.fontSize.small,
+      colorScheme: theme.name === 'dark' ? 'dark' : 'light',
     },
     suggestionsList: {
       position: 'absolute', top: '100%', left: 0, right: 0,
@@ -63,6 +64,7 @@ const AutocompleteInput: React.FC<AutocompleteInputProps> = ({ value = '', onCha
         onBlur={() => setTimeout(() => setShowSuggestions(false), 200)} // Delay to allow click
         placeholder={placeholder}
         style={styles.input}
+        className="custom-placeholder"
         autoComplete="off"
       />
       {showSuggestions && suggestionsToShow.length > 0 && (

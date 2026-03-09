@@ -1,62 +1,25 @@
-import React, { useState, useEffect } from 'react';
+
+import React, { useState } from 'react';
 import { useTheme } from '../contexts/ThemeContext';
 import { useData } from '../contexts/DataContext';
-import { useAuth } from '../contexts/AuthContext';
-import { isUserAdmin } from '../services/userService';
-import DashboardKPIs from '../components/admin/DashboardKPIs';
-import UserManagement from '../components/admin/UserManagement';
+import Card from '../components/common/Card';
+import { BarChartIcon } from '../components/icons/BarChartIcon';
+import { UsersIcon } from '../components/icons/UsersIcon';
+import { DatabaseIcon } from '../components/icons/DatabaseIcon';
 
 const AdminPage: React.FC = () => {
     const { theme } = useTheme();
     const { setCurrentPage } = useData();
-    const { user } = useAuth();
-    const [activeTab, setActiveTab] = useState<'dashboard' | 'users'>('dashboard');
-    const [isAdmin, setIsAdmin] = useState(false);
-    const [loading, setLoading] = useState(true);
+    const [activeTab, setActiveTab] = useState('dashboard');
 
-    useEffect(() => {
-        const checkAdmin = async () => {
-            if (!user) {
-                setCurrentPage('landing');
-                return;
-            }
-            const adminStatus = await isUserAdmin(user.uid);
-            setIsAdmin(adminStatus);
-            if (!adminStatus) {
-                alert('No tienes permisos de admin');
-                setCurrentPage('recorder');
-            }
-            setLoading(false);
-        };
-        checkAdmin();
-    }, [user, setCurrentPage]);
-
-    if (loading) {
-        return (
-            <div style={{
-                padding: '40px',
-                textAlign: 'center',
-                color: theme.colors.primaryText,
-                background: theme.colors.background,
-                minHeight: '100vh'
-            }}>
-                Verificando permisos...
-            </div>
-        );
-    }
-
-    if (!isAdmin) return null;
-
-    const styles = {
+    const styles: { [key: string]: React.CSSProperties } = {
         container: {
-            minHeight: '100vh',
-            background: theme.colors.background,
-            color: theme.colors.primaryText,
-            padding: theme.spacing.large
+            maxWidth: '1200px',
+            margin: '0 auto',
+            padding: theme.spacing.large,
+            color: theme.colors.primaryText
         },
         header: {
-            maxWidth: '1400px',
-            margin: '0 auto',
             display: 'flex',
             justifyContent: 'space-between',
             alignItems: 'center',
@@ -64,80 +27,78 @@ const AdminPage: React.FC = () => {
         },
         title: {
             fontSize: theme.typography.fontSize.extraLarge,
-            fontWeight: 900,
+            fontWeight: 800,
             margin: 0
         },
         backBtn: {
-            padding: '12px 24px',
-            borderRadius: '12px',
-            background: theme.colors.cardBackground,
-            color: theme.colors.primaryText,
+            padding: '8px 16px',
+            borderRadius: '8px',
             border: `1px solid ${theme.colors.borderStrong}`,
-            cursor: 'pointer',
-            fontSize: theme.typography.fontSize.medium,
-            fontWeight: 600,
-            transition: 'all 0.2s'
-        },
-        content: {
-            maxWidth: '1400px',
-            margin: '0 auto'
-        },
-        tabs: {
-            display: 'flex',
-            gap: theme.spacing.small,
-            marginBottom: theme.spacing.large,
-            borderBottom: `2px solid ${theme.colors.borderStrong}`
-        },
-        tab: {
-            padding: '12px 24px',
             background: 'transparent',
-            border: 'none',
-            color: theme.colors.secondaryText,
-            cursor: 'pointer',
-            fontSize: theme.typography.fontSize.medium,
-            fontWeight: 600,
-            borderBottom: '3px solid transparent',
-            transition: 'all 0.2s'
+            color: theme.colors.primaryText,
+            cursor: 'pointer'
         },
-        activeTab: {
-            color: theme.colors.accent1,
-            borderBottomColor: theme.colors.accent1
+        grid: {
+            display: 'grid',
+            gridTemplateColumns: 'repeat(auto-fit, minmax(300px, 1fr))',
+            gap: theme.spacing.large,
+            marginBottom: theme.spacing.extraLarge
+        },
+        metricCard: {
+            display: 'flex',
+            alignItems: 'center',
+            gap: theme.spacing.medium,
+            padding: theme.spacing.large
+        },
+        metricValue: {
+            fontSize: '2.5rem',
+            fontWeight: 900,
+            lineHeight: 1
+        },
+        metricLabel: {
+            fontSize: '0.9rem',
+            color: theme.colors.secondaryText,
+            textTransform: 'uppercase'
         }
     };
 
+    // Mock Data for MVP - In real app, fetch from Firebase Admin SDK or specific collection
+    const metrics = [
+        { label: 'Usuarios Totales', value: '1,240', icon: <UsersIcon size={32} color={theme.colors.accent1} /> },
+        { label: 'Partidos Registrados', value: '15.4k', icon: <DatabaseIcon size={32} color={theme.colors.accent2} /> },
+        { label: 'Uso de IA (Mes)', value: '3,502', icon: <BarChartIcon size={32} color={theme.colors.accent3} /> },
+    ];
+
     return (
         <div style={styles.container}>
-            <div style={styles.header}>
-                <h1 style={styles.title}>Panel de Administración</h1>
-                <button
-                    onClick={() => setCurrentPage('settings')}
-                    style={styles.backBtn}
-                    onMouseEnter={(e) => e.currentTarget.style.background = theme.colors.borderStrong}
-                    onMouseLeave={(e) => e.currentTarget.style.background = theme.colors.cardBackground}
-                >
-                    ← Volver
+            <header style={styles.header}>
+                <h1 style={styles.title}>Panel de Control</h1>
+                <button style={styles.backBtn} onClick={() => setCurrentPage('settings')}>
+                    Volver a App
                 </button>
+            </header>
+
+            <div style={styles.grid}>
+                {metrics.map((m, i) => (
+                    <Card key={i}>
+                        <div style={styles.metricCard}>
+                            <div>{m.icon}</div>
+                            <div>
+                                <div style={styles.metricValue}>{m.value}</div>
+                                <div style={styles.metricLabel}>{m.label}</div>
+                            </div>
+                        </div>
+                    </Card>
+                ))}
             </div>
 
-            <div style={styles.content}>
-                <div style={styles.tabs}>
-                    <button
-                        style={{...styles.tab, ...(activeTab === 'dashboard' ? styles.activeTab : {})}}
-                        onClick={() => setActiveTab('dashboard')}
-                    >
-                        📊 Dashboard
-                    </button>
-                    <button
-                        style={{...styles.tab, ...(activeTab === 'users' ? styles.activeTab : {})}}
-                        onClick={() => setActiveTab('users')}
-                    >
-                        👥 Usuarios
-                    </button>
+            <Card title="Actividad Reciente del Sistema">
+                <div style={{padding: theme.spacing.medium, color: theme.colors.secondaryText}}>
+                    <p>• Nuevo pico de usuarios registrados (ayer)</p>
+                    <p>• Base de datos optimizada automáticamente</p>
+                    <p>• 5 reportes de usuarios pendientes de revisión</p>
                 </div>
-
-                {activeTab === 'dashboard' && <DashboardKPIs />}
-                {activeTab === 'users' && <UserManagement />}
-            </div>
+            </Card>
         </div>
     );
 };

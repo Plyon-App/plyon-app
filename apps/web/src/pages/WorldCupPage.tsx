@@ -21,16 +21,17 @@ import SectionHelp from '../components/common/SectionHelp';
 import { CONFEDERATIONS, WORLD_CUP_LOGO, parseLocalDate } from '../utils/analytics';
 import { CheckIcon } from '../components/icons/CheckIcon';
 import { LockIcon } from '../components/icons/LockIcon';
+import GrandSlamPage from './tennis/GrandSlamPage';
 
 const WorldCupPage: React.FC = () => {
   const { theme } = useTheme();
-  const { playerProfile, startNewWorldCupCampaign, startNewQualifiersCampaign, abandonWorldCupCampaign, isShareMode, updatePlayerProfile } = useData();
-  const { isTutorialSeen, markTutorialAsSeen } = useTutorial('worldcup');
+  const { playerProfile, startNewWorldCupCampaign, startNewQualifiersCampaign, abandonWorldCupCampaign, isShareMode, updatePlayerProfile, currentSport } = useData();
   
-  // DEBUG: Ver qué llega
-  console.log("🔍 WorldCupPage playerProfile:", playerProfile);
-  console.log("🔍 activeWorldCupMode:", playerProfile?.activeWorldCupMode);
-  console.log("🔍 qualifiersProgress:", playerProfile?.qualifiersProgress);
+  if (currentSport === 'tennis') {
+      return <GrandSlamPage />;
+  }
+
+  const { isTutorialSeen, markTutorialAsSeen } = useTutorial('worldcup');
   
   const [isConfederationModalOpen, setIsConfederationModalOpen] = useState(false);
   const [isAbandonConfirmOpen, setIsAbandonConfirmOpen] = useState(false);

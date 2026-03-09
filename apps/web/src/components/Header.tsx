@@ -1,8 +1,6 @@
 
 import React, { useState, useEffect, useCallback } from 'react';
 import { useTheme } from '../contexts/ThemeContext';
-import SportMenuDropdown from './SportMenuDropdown';
-import SportSelectorModal from './modals/SportSelectorModal';
 import { useData } from '../contexts/DataContext';
 import { useAuth } from '../contexts/AuthContext';
 import { SunIcon } from './icons/SunIcon';
@@ -22,21 +20,30 @@ import { FootballIcon } from './icons/FootballIcon';
 import { UserIcon } from './icons/UserIcon';
 import LoginModal from './modals/LoginModal';
 import { PlayerIcon } from './icons/PlayerIcon';
+import { CareerIcon } from './icons/CareerIcon';
 import { BellIcon } from './icons/BellIcon';
 import NotificationCenter from './notifications/NotificationCenter';
+import SportMenuDropdown from './SportMenuDropdown';
+import SportSelectorModal from './modals/SportSelectorModal';
 
 const Header: React.FC = () => {
   const { theme, toggleTheme } = useTheme();
-  const { currentPage, setCurrentPage, playerProfile, hasUnreadNotifications, activeSports, addActiveSport } = useData();
+  const { currentPage, setCurrentPage, playerProfile, hasUnreadNotifications, activeSports, addActiveSport, currentSport } = useData();
   const { user } = useAuth();
   const [isMenuOpen, setIsMenuOpen] = useState(false);
   const [isAnimatingOut, setIsAnimatingOut] = useState(false);
   const [isDesktop, setIsDesktop] = useState(window.innerWidth >= 992);
-  const [isSportModalOpen, setIsSportModalOpen] = useState(false);
   const [hoveredButton, setHoveredButton] = useState<string | null>(null);
   const [isLoginModalOpen, setIsLoginModalOpen] = useState(false);
   const [isNotificationCenterOpen, setIsNotificationCenterOpen] = useState(false);
+  const [isSportModalOpen, setIsSportModalOpen] = useState(false);
   const isDark = theme.name === 'dark';
+
+  const sportSuffix = {
+    football: 'Fútbol',
+    paddle: 'Paddle',
+    tennis: 'Tenis'
+  }[currentSport] || '';
 
   useEffect(() => {
     const handleResize = () => setIsDesktop(window.innerWidth >= 992);
@@ -60,7 +67,7 @@ const Header: React.FC = () => {
     { page: 'stats', label: 'Estadísticas', icon: <BarChartIcon size={18} /> },
     { page: 'table', label: 'Tabla', icon: <TableIcon size={18} /> },
     { page: 'duels', label: 'Duelos', icon: <UsersIcon size={18} /> },
-    { page: 'worldcup', label: 'Modo Carrera', icon: <PlayerIcon size={18} /> },
+    { page: 'worldcup', label: 'Modo Carrera', icon: <CareerIcon size={18} sport={currentSport} /> },
     { page: 'progress', label: 'Progreso', icon: <TrendingUpIcon size={18} /> },
     { page: 'social', label: 'Comunidad', icon: <ImageIcon size={18} /> },
     { page: 'coach', label: 'Entrenador IA', icon: <ChatBubbleIcon size={18} /> },
@@ -89,18 +96,34 @@ const Header: React.FC = () => {
     const style: React.CSSProperties = { border: '1px solid' };
 
     if (isDark) {
-        if (isHovered) {
-            style.backgroundColor = '#414a6b';
-            style.color = '#a1a8d6';
-            style.borderColor = '#414a6b';
-        } else if (isActive) {
-            style.backgroundColor = '#a1a8d6';
-            style.color = '#1c2237';
-            style.borderColor = '#414a6b';
-        } else { // Inactive
-            style.backgroundColor = '#1c2237';
-            style.color = '#a1a8d6';
-            style.borderColor = '#414a6b';
+        if (currentSport === 'tennis') {
+            if (isActive) {
+                style.backgroundColor = '#35547d';
+                style.color = '#ffffff';
+                style.borderColor = '#35547d';
+            } else if (isHovered) {
+                style.backgroundColor = '#2a435e';
+                style.color = '#ffffff';
+                style.borderColor = '#2a435e';
+            } else { // Inactive
+                style.backgroundColor = '#1c2237';
+                style.color = '#a1a8d6';
+                style.borderColor = '#414a6b';
+            }
+        } else {
+            if (isHovered) {
+                style.backgroundColor = '#414a6b';
+                style.color = '#a1a8d6';
+                style.borderColor = '#414a6b';
+            } else if (isActive) {
+                style.backgroundColor = '#a1a8d6';
+                style.color = '#1c2237';
+                style.borderColor = '#414a6b';
+            } else { // Inactive
+                style.backgroundColor = '#1c2237';
+                style.color = '#a1a8d6';
+                style.borderColor = '#414a6b';
+            }
         }
     } else { // Light theme
         if (isHovered) {
@@ -155,7 +178,7 @@ const Header: React.FC = () => {
     aiText: { 
         display: 'inline-block',
         color: theme.colors.accent1,
-        background: `linear-gradient(90deg, ${theme.colors.accent1}, ${theme.colors.accent2})`,
+        backgroundImage: `linear-gradient(90deg, ${theme.colors.accent1}, ${theme.colors.accent2})`,
         WebkitBackgroundClip: 'text',
         backgroundClip: 'text',
         WebkitTextFillColor: 'transparent',
@@ -252,7 +275,7 @@ const Header: React.FC = () => {
       <header style={styles.header}>
         <div style={styles.logoContainer}>
           <FootballIcon size={32} color={theme.colors.accent1} />
-          <h1 style={styles.title}>Ply<span style={styles.aiText}>on</span></h1>
+          <h1 style={styles.title}>Ply<span style={styles.aiText}>on</span>{sportSuffix}</h1>
         </div>
         <div style={styles.rightSection}>
           {isDesktop && (
@@ -327,10 +350,10 @@ const Header: React.FC = () => {
               </div>
               <button onClick={handleCloseMenu} style={styles.iconButton} aria-label="Cerrar menú">
                 <CloseIcon color={theme.colors.primaryText} size={28} />
-              <SportMenuDropdown onOpenModal={() => { setIsSportModalOpen(true); setIsMenuOpen(false); }} isMobile />
               </button>
             </div>
             <nav style={styles.mobileNav}>
+              <SportMenuDropdown onOpenModal={() => { setIsSportModalOpen(true); handleCloseMenu(); }} isMobile />
               {navLinks.map(({ page, label, icon }, index) => {
                 const isActive = currentPage === page;
                 const buttonStateStyle = getNavButtonStyle(page, isActive);
@@ -359,8 +382,8 @@ const Header: React.FC = () => {
       <SportSelectorModal 
         isOpen={isSportModalOpen} 
         onClose={() => setIsSportModalOpen(false)} 
-        activeSports={activeSports} 
-        onAddSport={addActiveSport} 
+        activeSports={activeSports}
+        onAddSport={addActiveSport}
       />
     </>
   );

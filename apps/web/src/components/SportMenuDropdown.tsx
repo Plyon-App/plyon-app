@@ -90,7 +90,7 @@ const SportMenuDropdown: React.FC<SportMenuDropdownProps> = ({ onOpenModal, isMo
       textAlign: 'left',
     },
     activeItem: {
-      backgroundColor: theme.colors.accent1 + '20',
+      backgroundColor: theme.colors.accent1 + '20', // 20% opacity
       color: theme.colors.accent1,
     },
     addItem: {
@@ -116,7 +116,7 @@ const SportMenuDropdown: React.FC<SportMenuDropdownProps> = ({ onOpenModal, isMo
           <span>{currentConfig.label}</span>
         </div>
         <ChevronIcon 
-          isExpanded={isOpen}
+          direction={isOpen ? 'up' : 'down'} 
           size={16} 
           color={theme.colors.secondaryText} 
         />

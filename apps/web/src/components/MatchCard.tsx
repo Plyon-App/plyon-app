@@ -689,7 +689,7 @@ const MatchCard: React.FC<MatchCardProps> = ({
                     {!isReadOnly && (
                     <>
                         <button onClick={onEdit} style={{...styles.actionButton, border: `1px solid ${theme.colors.draw}`, color: theme.colors.secondaryText}} aria-label="Editar partido">EDITAR</button>
-                        <button onClick={onDelete} style={{...styles.actionButton, border: `1px solid ${theme.colors.loss}80`, color: theme.colors.loss}} aria-label="Eliminar partido">
+                        <button onClick={onDelete} style={{...styles.actionButton, border: `1px solid #f74d4d80`, color: '#f74d4d'}} aria-label="Eliminar partido">
                         <TrashIcon />
                         </button>
                     </>

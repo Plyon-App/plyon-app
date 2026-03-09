@@ -15,6 +15,7 @@ interface PlayerCompareModalProps {
   onClose: () => void;
   allPlayers: string[];
   allMatches: Match[];
+  initialPlayer?: string;
 }
 
 const calculateContextStats = (contextMatches: Match[]): PlayerContextStats | null => {
@@ -43,19 +44,11 @@ const getNestedValue = (obj: any, path: string) => {
     return path.split('.').reduce((acc, part) => acc && acc[part], obj);
 };
 
-const radarMetrics: { label: string; key: string }[] = [
-    { label: 'G/P', key: 'playerGpm' },
-    { label: 'A/P', key: 'playerApm' },
-    { label: '% V', key: 'winRate' },
-    { label: 'PJ', key: 'matchesPlayed' },
-    { label: 'Goles', key: 'playerGoals' },
-    { label: 'Asist.', key: 'playerAssists' },
-];
-
-
-const PlayerCompareModal: React.FC<PlayerCompareModalProps> = ({ isOpen, onClose, allPlayers, allMatches }) => {
+const PlayerCompareModal: React.FC<PlayerCompareModalProps> = ({ isOpen, onClose, allPlayers, allMatches, initialPlayer }) => {
   const { theme } = useTheme();
-  const { playerProfile } = useData();
+  const { playerProfile, currentSport } = useData();
+  
+  const isTennisOrPaddle = currentSport === 'tennis' || currentSport === 'paddle';
   
   const [playerSlots, setPlayerSlots] = useState<string[]>(['', '', '']);
   const selectedPlayers = useMemo(() => playerSlots.filter(p => p.trim()), [playerSlots]);
@@ -66,14 +59,55 @@ const PlayerCompareModal: React.FC<PlayerCompareModalProps> = ({ isOpen, onClose
   useEffect(() => {
     if (isOpen) {
       document.body.style.overflow = 'hidden';
-      setPlayerSlots(['', '', '']);
-      setContext('teammates');
+      setPlayerSlots([initialPlayer || '', '', '']);
+      // Default to opponents for Tennis or if initialPlayer is provided
+      setContext(isTennisOrPaddle || initialPlayer ? 'opponents' : 'teammates');
       setSelectedYear('all');
     } else {
       document.body.style.overflow = 'auto';
     }
     return () => { document.body.style.overflow = 'auto'; };
-  }, [isOpen]);
+  }, [isOpen, isTennisOrPaddle, initialPlayer]);
+
+  const radarMetrics = useMemo(() => {
+      if (isTennisOrPaddle) {
+          return [
+              { label: '% V', key: 'winRate' },
+              { label: 'PJ', key: 'matchesPlayed' },
+              { label: 'Puntos', key: 'points' },
+          ];
+      }
+      return [
+        { label: 'G/P', key: 'playerGpm' },
+        { label: 'A/P', key: 'playerApm' },
+        { label: '% V', key: 'winRate' },
+        { label: 'PJ', key: 'matchesPlayed' },
+        { label: 'Goles', key: 'playerGoals' },
+        { label: 'Asist.', key: 'playerAssists' },
+    ];
+  }, [isTennisOrPaddle]);
+  
+  const tableStats = useMemo(() => {
+      const base = [
+        { key: 'matchesPlayed', label: 'PJ', format: (v: any) => v?.toString() ?? '-', highlight: true },
+        { key: 'winRate', label: '% Victorias', format: (v: any) => v !== undefined ? `${v.toFixed(1)}%` : '-', highlight: true },
+        { key: 'record.wins', label: 'G', format: (v: any) => v?.toString() ?? '-', highlight: true },
+        { key: 'record.draws', label: 'E', format: (v: any) => v?.toString() ?? '-', highlight: false },
+        { key: 'record.losses', label: 'P', format: (v: any) => v?.toString() ?? '-', highlight: false },
+      ];
+      
+      if (isTennisOrPaddle) {
+          return base;
+      }
+      
+      return [
+        ...base,
+        { key: 'playerGoals', label: 'Goles', format: (v: any) => v?.toString() ?? '-', highlight: true },
+        { key: 'playerAssists', label: 'Asistencias', format: (v: any) => v?.toString() ?? '-', highlight: true },
+        { key: 'playerGpm', label: 'G/P', format: (v: any) => v !== undefined ? v.toFixed(2) : '-', highlight: true },
+        { key: 'playerApm', label: 'A/P', format: (v: any) => v !== undefined ? v.toFixed(2) : '-', highlight: true },
+      ];
+  }, [isTennisOrPaddle]);
   
   const handlePlayerSlotChange = (index: number, value: string) => {
       setPlayerSlots(prev => {
@@ -172,17 +206,7 @@ const PlayerCompareModal: React.FC<PlayerCompareModalProps> = ({ isOpen, onClose
     });
   }, [radarChartData]);
   
-  const tableStats: { key: string; label: string; format: (v: any) => string; highlight?: boolean }[] = [
-    { key: 'matchesPlayed', label: 'PJ', format: v => v?.toString() ?? '-', highlight: true },
-    { key: 'playerGoals', label: 'Goles', format: v => v?.toString() ?? '-', highlight: true },
-    { key: 'playerAssists', label: 'Asistencias', format: v => v?.toString() ?? '-', highlight: true },
-    { key: 'playerGpm', label: 'G/P', format: v => v !== undefined ? v.toFixed(2) : '-', highlight: true },
-    { key: 'playerApm', label: 'A/P', format: v => v !== undefined ? v.toFixed(2) : '-', highlight: true },
-    { key: 'winRate', label: '% Victorias', format: v => v !== undefined ? `${v.toFixed(1)}%` : '-', highlight: true },
-    { key: 'record.wins', label: 'G', format: v => v?.toString() ?? '-', highlight: true },
-    { key: 'record.draws', label: 'E', format: v => v?.toString() ?? '-', highlight: false },
-    { key: 'record.losses', label: 'P', format: v => v?.toString() ?? '-', highlight: false },
-  ];
+
   
   if (!isOpen) {
     return null;

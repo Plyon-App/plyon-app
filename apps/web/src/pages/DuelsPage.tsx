@@ -1,4 +1,3 @@
-
 import React, { useState, useMemo, useRef, useEffect } from 'react';
 import type { Match, TeammateStats, OpponentStats } from '../types';
 import { useTheme } from '../contexts/ThemeContext';
@@ -65,13 +64,15 @@ const InsightList: React.FC<{ title: string; description: string; players: (Team
 
 export const DuelsPage: React.FC = () => {
   const { theme } = useTheme();
-  const { matches, playerProfile, isShareMode } = useData();
+  const { matches, playerProfile, isShareMode, currentSport } = useData();
   const { isTutorialSeen, markTutorialAsSeen } = useTutorial('duels');
-  const [activeTab, setActiveTab] = useState<'teammates' | 'opponents' | 'players'>('teammates');
+  const [activeTab, setActiveTab] = useState<'teammates' | 'opponents' | 'players'>('opponents'); // Default to opponents for Tennis compatibility
   const [filteredByPlayer, setFilteredByPlayer] = useState<string | null>(null);
   const [globalSearchTerm, setGlobalSearchTerm] = useState('');
   const [isTutorialOpen, setIsTutorialOpen] = useState(!isTutorialSeen && !isShareMode);
   
+  const isTennisOrPaddle = currentSport === 'tennis' || currentSport === 'paddle';
+
   // Sync tutorial state
   useEffect(() => {
       if (isTutorialSeen) setIsTutorialOpen(false);
@@ -100,18 +101,29 @@ export const DuelsPage: React.FC = () => {
       setTeammateSort([{ key: 'matchesPlayed', order: 'desc' }]);
       setOpponentSort([{ key: 'matchesPlayed', order: 'desc' }]);
       setPlayerSort([{ key: 'matchesPlayed', order: 'desc' }]);
-  }, []);
+      
+      // Force 'opponents' tab if Tennis/Paddle
+      if (isTennisOrPaddle) {
+          setActiveTab('opponents');
+      } else {
+          setActiveTab('teammates');
+      }
+  }, [isTennisOrPaddle]);
+
+  const sportMatches = useMemo(() => {
+    return matches.filter(m => m.sport === currentSport || (!m.sport && currentSport === 'football'));
+  }, [matches, currentSport]);
 
   const availableYears = useMemo(() => {
-      const matchesWithPlayers = matches.filter(m => (m.myTeamPlayers && m.myTeamPlayers.length > 0) || (m.opponentPlayers && m.opponentPlayers.length > 0));
+      const matchesWithPlayers = sportMatches.filter(m => (m.myTeamPlayers && m.myTeamPlayers.length > 0) || (m.opponentPlayers && m.opponentPlayers.length > 0));
       const yearSet = new Set(matchesWithPlayers.map(m => parseLocalDate(m.date).getFullYear()));
       return Array.from(yearSet).sort((a, b) => Number(b) - Number(a));
-  }, [matches]);
+  }, [sportMatches]);
 
   const filteredMatches = useMemo(() => {
-      if (selectedYear === 'all') return matches;
-      return matches.filter(m => parseLocalDate(m.date).getFullYear().toString() === selectedYear);
-  }, [matches, selectedYear]);
+      if (selectedYear === 'all') return sportMatches;
+      return sportMatches.filter(m => parseLocalDate(m.date).getFullYear().toString() === selectedYear);
+  }, [sportMatches, selectedYear]);
 
   const tutorialSteps = [
     {
@@ -137,13 +149,14 @@ export const DuelsPage: React.FC = () => {
   ];
 
   const hasPlayerData = useMemo(() => filteredMatches.some(m => (m.myTeamPlayers && m.myTeamPlayers.length > 0) || (m.opponentPlayers && m.opponentPlayers.length > 0)), [filteredMatches]);
-  const allDuelPlayers = useMemo(() => { const players = new Set<string>(); matches.forEach(match => { match.myTeamPlayers?.forEach(p => { if (p && p.name.trim() && p.name.toLowerCase() !== playerProfile.name?.toLowerCase()) players.add(p.name.trim()); }); match.opponentPlayers?.forEach(p => { if (p && p.name.trim()) players.add(p.name.trim()); }); }); return Array.from(players).sort(); }, [matches, playerProfile.name]);
+  const allDuelPlayers = useMemo(() => { const players = new Set<string>(); sportMatches.forEach(match => { match.myTeamPlayers?.forEach(p => { if (p && p.name.trim() && p.name.toLowerCase() !== playerProfile.name?.toLowerCase()) players.add(p.name.trim()); }); match.opponentPlayers?.forEach(p => { if (p && p.name.trim()) players.add(p.name.trim()); }); }); return Array.from(players).sort(); }, [sportMatches, playerProfile.name]);
   
   useEffect(() => { const handleResize = () => setIsDesktop(window.innerWidth >= 992); window.addEventListener('resize', handleResize); return () => window.removeEventListener('resize', handleResize); }, []);
 
   const { teammates, opponents, insights, players } = useMemo(() => {
       const calculateStatsForMatches = (matchList: Match[]) => {
           const CONFIDENCE_FACTOR = 5;
+          // Football Scoring
           const TEAMMATE_WIN_SCORE = 3, TEAMMATE_DRAW_SCORE = 1, TEAMMATE_LOSS_SCORE = -1;
           const MY_GOAL_WITH_TEAMMATE_SCORE = 1.5, MY_ASSIST_WITH_TEAMMATE_SCORE = 1;
           const OPPONENT_WIN_SCORE = 3, OPPONENT_DRAW_SCORE = 1, OPPONENT_LOSS_SCORE = -2;
@@ -153,46 +166,68 @@ export const DuelsPage: React.FC = () => {
           const TEAMMATE_ASSIST_SCORE = 0.5;
           const OPPONENT_GOAL_SCORE = -0.75;
           const OPPONENT_ASSIST_SCORE = -0.5;
+
+          // Tennis Scoring (Simplified Impact)
+          const TENNIS_WIN_SCORE = 3;
+          const TENNIS_LOSS_SCORE = -2;
+
           const teammateData: Record<string, any> = {};
           const opponentData: Record<string, any> = {};
+          
           matchList.forEach(match => {
-              match.myTeamPlayers?.forEach(player => {
-                  if (player.name.toLowerCase() === playerProfile.name?.toLowerCase() || !player.name.trim()) return;
-                  if (!teammateData[player.name]) teammateData[player.name] = { matches: 0, wins: 0, draws: 0, losses: 0, goals: 0, assists: 0, totalImpactScore: 0, ownGoals: 0, ownAssists: 0, matchesList: [] };
-                  const data = teammateData[player.name];
-                  data.matches++;
-                  if (match.result === 'VICTORIA') data.wins++; else if (match.result === 'EMPATE') data.draws++; else data.losses++;
-                  data.goals += match.myGoals; data.assists += match.myAssists;
-                  data.ownGoals += player.goals; data.ownAssists += player.assists;
-                  let matchScore = 0;
-                  if (match.result === 'VICTORIA') matchScore += TEAMMATE_WIN_SCORE; else if (match.result === 'EMPATE') matchScore += TEAMMATE_DRAW_SCORE; else matchScore += TEAMMATE_LOSS_SCORE;
-                  matchScore += match.myGoals * MY_GOAL_WITH_TEAMMATE_SCORE;
-                  matchScore += match.myAssists * MY_ASSIST_WITH_TEAMMATE_SCORE;
-                  matchScore += (match.goalDifference || 0) * GOAL_DIFFERENCE_SCORE;
-                  matchScore += player.goals * TEAMMATE_GOAL_SCORE;
-                  matchScore += player.assists * TEAMMATE_ASSIST_SCORE;
-                  data.totalImpactScore += matchScore;
-                  data.matchesList.push(match);
-              });
+              // Teammates (Only for Football or Doubles if implemented)
+              if (!isTennisOrPaddle) {
+                  match.myTeamPlayers?.forEach(player => {
+                      if (player.name.toLowerCase() === playerProfile.name?.toLowerCase() || !player.name.trim()) return;
+                      if (!teammateData[player.name]) teammateData[player.name] = { matches: 0, wins: 0, draws: 0, losses: 0, goals: 0, assists: 0, totalImpactScore: 0, ownGoals: 0, ownAssists: 0, matchesList: [] };
+                      const data = teammateData[player.name];
+                      data.matches++;
+                      if (match.result === 'VICTORIA') data.wins++; else if (match.result === 'EMPATE') data.draws++; else data.losses++;
+                      data.goals += match.myGoals; data.assists += match.myAssists;
+                      data.ownGoals += player.goals; data.ownAssists += player.assists;
+                      let matchScore = 0;
+                      if (match.result === 'VICTORIA') matchScore += TEAMMATE_WIN_SCORE; else if (match.result === 'EMPATE') matchScore += TEAMMATE_DRAW_SCORE; else matchScore += TEAMMATE_LOSS_SCORE;
+                      matchScore += match.myGoals * MY_GOAL_WITH_TEAMMATE_SCORE;
+                      matchScore += match.myAssists * MY_ASSIST_WITH_TEAMMATE_SCORE;
+                      matchScore += (match.goalDifference || 0) * GOAL_DIFFERENCE_SCORE;
+                      matchScore += player.goals * TEAMMATE_GOAL_SCORE;
+                      matchScore += player.assists * TEAMMATE_ASSIST_SCORE;
+                      data.totalImpactScore += matchScore;
+                      data.matchesList.push(match);
+                  });
+              }
+
+              // Opponents
               match.opponentPlayers?.forEach(player => {
                   if (!player.name.trim()) return;
                   if (!opponentData[player.name]) opponentData[player.name] = { matches: 0, wins: 0, draws: 0, losses: 0, myGoals: 0, myAssists: 0, totalImpactScore: 0, ownGoals: 0, ownAssists: 0, matchesList: [] };
                   const data = opponentData[player.name];
                   data.matches++;
                   if (match.result === 'VICTORIA') data.wins++; else if (match.result === 'EMPATE') data.draws++; else data.losses++;
-                  data.myGoals += match.myGoals; data.myAssists += match.myAssists;
-                  data.ownGoals += player.goals; data.ownAssists += player.assists;
+                  
+                  if (!isTennisOrPaddle) {
+                    data.myGoals += match.myGoals; data.myAssists += match.myAssists;
+                    data.ownGoals += player.goals; data.ownAssists += player.assists;
+                  }
+
                   let matchScore = 0;
-                  if (match.result === 'VICTORIA') matchScore += OPPONENT_WIN_SCORE; else if (match.result === 'EMPATE') matchScore += OPPONENT_DRAW_SCORE; else matchScore += OPPONENT_LOSS_SCORE;
-                  matchScore += match.myGoals * MY_GOAL_AGAINST_OPPONENT_SCORE;
-                  matchScore += match.myAssists * MY_ASSIST_AGAINST_OPPONENT_SCORE;
-                  matchScore += (match.goalDifference || 0) * GOAL_DIFFERENCE_SCORE;
-                  matchScore += player.goals * OPPONENT_GOAL_SCORE;
-                  matchScore += player.assists * OPPONENT_ASSIST_SCORE;
+                  if (isTennisOrPaddle) {
+                      if (match.result === 'VICTORIA') matchScore += TENNIS_WIN_SCORE; else matchScore += TENNIS_LOSS_SCORE;
+                      // Could add set difference here later
+                  } else {
+                      if (match.result === 'VICTORIA') matchScore += OPPONENT_WIN_SCORE; else if (match.result === 'EMPATE') matchScore += OPPONENT_DRAW_SCORE; else matchScore += OPPONENT_LOSS_SCORE;
+                      matchScore += match.myGoals * MY_GOAL_AGAINST_OPPONENT_SCORE;
+                      matchScore += match.myAssists * MY_ASSIST_AGAINST_OPPONENT_SCORE;
+                      matchScore += (match.goalDifference || 0) * GOAL_DIFFERENCE_SCORE;
+                      matchScore += player.goals * OPPONENT_GOAL_SCORE;
+                      matchScore += player.assists * OPPONENT_ASSIST_SCORE;
+                  }
+                  
                   data.totalImpactScore += matchScore;
                   data.matchesList.push(match);
               });
           });
+          
           const finalTeammates: Omit<TeammateStats, 'rankChange'>[] = Object.entries(teammateData).map(([name, data]) => ({ name, matchesPlayed: data.matches, winRate: data.matches > 0 ? (data.wins / data.matches) * 100 : 0, totalGoals: data.ownGoals, totalAssists: data.ownAssists, gpm: data.matches > 0 ? data.goals / data.matches : 0, apm: data.matches > 0 ? data.assists / data.matches : 0, record: { wins: data.wins, draws: data.draws, losses: data.losses }, totalContributions: data.ownGoals + data.ownAssists, contributionsPerMatch: data.matches > 0 ? (data.ownGoals + data.ownAssists) / data.matches : 0, impactScore: data.matches > 0 ? data.totalImpactScore / (data.matches + CONFIDENCE_FACTOR) : 0, ownGoals: data.ownGoals, ownAssists: data.ownAssists, matches: data.matchesList, points: data.wins * 3 + data.draws, myGoals: data.goals, myAssists: data.assists, }));
           const finalOpponents: Omit<OpponentStats, 'rankChange'>[] = Object.entries(opponentData).map(([name, data]) => ({ name, matchesPlayed: data.matches, winRate: data.matches > 0 ? (data.wins / data.matches) * 100 : 0, record: { wins: data.wins, draws: data.draws, losses: data.losses }, myTotalContributions: data.myGoals + data.myAssists, myContributionsPerMatch: data.matches > 0 ? (data.myGoals + data.myAssists) / data.matches : 0, impactScore: data.matches > 0 ? data.totalImpactScore / (data.matches + CONFIDENCE_FACTOR) : 0, ownGoals: data.ownGoals, ownAssists: data.ownAssists, matches: data.matchesList, points: data.wins * 3 + data.draws, myGoals: data.myGoals, myAssists: data.myAssists, gpm: data.matches > 0 ? data.myGoals / data.matches : 0, apm: data.matches > 0 ? data.myAssists / data.matches : 0, }));
           return { teammates: finalTeammates, opponents: finalOpponents };
@@ -247,14 +282,20 @@ export const DuelsPage: React.FC = () => {
           return { teammates: allTeammatesWithRank.filter(p => p.name === filteredByPlayer), opponents: allOpponentsWithRank.filter(p => p.name === filteredByPlayer), players: finalPlayers.filter(p => p.name === filteredByPlayer), insights: { bestPartners: allInsights.bestPartners.filter(p => p.name === filteredByPlayer), worstPartners: allInsights.worstPartners.filter(p => p.name === filteredByPlayer), favoriteRivals: allInsights.favoriteRivals.filter(p => p.name === filteredByPlayer), nemesisRivals: allInsights.nemesisRivals.filter(p => p.name === filteredByPlayer), } };
       }
       return { teammates: allTeammatesWithRank, opponents: allOpponentsWithRank, insights: allInsights, players: finalPlayers };
-  }, [filteredMatches, filteredByPlayer, playerProfile.name]);
+  }, [filteredMatches, filteredByPlayer, playerProfile.name, isTennisOrPaddle]);
 
-  const insightSlides = useMemo(() => [
-      { id: 'bestPartners', title: "🤝 Mejores socios", description: "Compañeros con los que tu rendimiento se dispara.", players: insights.bestPartners, color: theme.colors.win, type: 'teammates' },
-      { id: 'favoriteRivals', title: "⚔️ Rivales preferidos", description: "Contrincantes a los que sueles dominar.", players: insights.favoriteRivals, color: theme.colors.accent1, type: 'opponents' },
-      { id: 'worstPartners', title: "⚠️ Socios complejos", description: "Compañeros con los que la química aún no fluye.", players: insights.worstPartners, color: theme.colors.draw, type: 'teammates' },
-      { id: 'nemesisRivals', title: "👻 La Bestia Negra", description: "Rivales que históricamente te complican el partido.", players: insights.nemesisRivals, color: theme.colors.loss, type: 'opponents' },
-  ], [insights, theme.colors]);
+  const insightSlides = useMemo(() => {
+      const slides = [];
+      if (!isTennisOrPaddle) {
+          slides.push({ id: 'bestPartners', title: "🤝 Mejores socios", description: "Compañeros con los que tu rendimiento se dispara.", players: insights.bestPartners, color: theme.colors.win, type: 'teammates' });
+      }
+      slides.push({ id: 'favoriteRivals', title: "⚔️ Rivales preferidos", description: "Contrincantes a los que sueles dominar.", players: insights.favoriteRivals, color: theme.colors.accent1, type: 'opponents' });
+      if (!isTennisOrPaddle) {
+          slides.push({ id: 'worstPartners', title: "⚠️ Socios complejos", description: "Compañeros con los que la química aún no fluye.", players: insights.worstPartners, color: theme.colors.draw, type: 'teammates' });
+      }
+      slides.push({ id: 'nemesisRivals', title: "👻 La Bestia Negra", description: "Rivales que históricamente te complican el partido.", players: insights.nemesisRivals, color: theme.colors.loss, type: 'opponents' });
+      return slides;
+  }, [insights, theme.colors, isTennisOrPaddle]);
   
   // --- TOUCH HANDLERS ---
   const onTouchStart = (e: React.TouchEvent) => {
@@ -375,7 +416,10 @@ export const DuelsPage: React.FC = () => {
 
   const getSortIndicator = (key: any, currentSort: SortItem<any>[]) => { const index = currentSort.findIndex(s => s.key === key); if (index === -1) return ' '; return currentSort[index].order === 'desc' ? '↓' : '↑'; };
   const Th: React.FC<{ sortKey: TeammateSortKey | OpponentSortKey | PlayerSortKey; sortConfig: SortItem<any>[]; onSort: () => void; children: React.ReactNode; style?: React.CSSProperties; hasTooltip?: boolean; tooltipText?: string; }> = ({ sortKey, sortConfig, onSort, children, style, hasTooltip, tooltipText }) => { const [isHovered, setIsHovered] = useState(false); const { theme } = useTheme(); const sortIndex = sortConfig.findIndex(s => s.key === sortKey); const isActive = sortIndex !== -1; const isMulti = sortConfig.length > 1; return ( <th style={{ ...styles.th, ...style, color: isActive ? theme.colors.accent2 : styles.th.color, borderBottom: isActive ? `2px solid ${theme.colors.accent2}` : styles.th.borderBottom }} onClick={onSort} > <div style={styles.thContent}> <span>{children}</span> <span>{getSortIndicator(sortKey, sortConfig)}</span> {isActive && isMulti && ( <span style={styles.sortBadge}> {sortIndex + 1} </span> )} {hasTooltip && ( <div style={{position: 'relative', display: 'flex', alignItems: 'center'}} onMouseEnter={() => setIsHovered(true)} onMouseLeave={() => setIsHovered(false)} > <InfoIcon size={14}/> {isHovered && ( <div style={{ position: 'absolute', bottom: '100%', left: '50%', transform: 'translateX(-50%)', width: '220px', padding: '0.5rem', backgroundColor: theme.colors.background, border: `1px solid ${theme.colors.borderStrong}`, borderRadius: '6px', boxShadow: theme.shadows.medium, zIndex: 10, fontSize: '0.75rem', color: theme.colors.primaryText, }}> {tooltipText} </div> )} </div> )} </div> </th> ); };
-  const tabOptions = [ { label: 'Compañeros', value: 'teammates' }, { label: 'Rivales', value: 'opponents' }, { label: 'Jugadores', value: 'players' }, ];
+  
+  const tabOptions = isTennisOrPaddle 
+    ? [{ label: 'Rivales', value: 'opponents' }] 
+    : [ { label: 'Compañeros', value: 'teammates' }, { label: 'Rivales', value: 'opponents' }, { label: 'Jugadores', value: 'players' }, ];
 
   const mainContent = (
       <div style={{display: 'flex', flexDirection: 'column', gap: theme.spacing.large, width: '100%'}}>
@@ -454,17 +498,19 @@ export const DuelsPage: React.FC = () => {
                               <div style={{flex: 1}}>
                                   <SegmentedControl options={tabOptions} selectedValue={activeTab} onSelect={(value) => setActiveTab(value as 'teammates' | 'opponents' | 'players')} />
                               </div>
-                              <div style={{...styles.multiSortToggle, ...(isMultiSortMode ? styles.multiSortActive : {})}} onClick={() => setIsMultiSortMode(!isMultiSortMode)} title="Activar para ordenar por múltiples columnas a la vez" > <span>ORDENAR</span> </div>
+                              {!isTennisOrPaddle && (
+                                <div style={{...styles.multiSortToggle, ...(isMultiSortMode ? styles.multiSortActive : {})}} onClick={() => setIsMultiSortMode(!isMultiSortMode)} title="Activar para ordenar por múltiples columnas a la vez" > <span>ORDENAR</span> </div>
+                              )}
                           </div>
                           <div style={styles.scrollWrapper}>
                               <div style={styles.tableContainer} ref={scrollContainerRef} className="no-scrollbar">
-                                  {activeTab === 'teammates' && (
+                                  {activeTab === 'teammates' && !isTennisOrPaddle && (
                                       <table style={styles.table}>
                                           <thead>
                                               <tr>
                                                   <Th style={styles.stickyColumn} sortKey="name" sortConfig={teammateSort} onSort={() => handleSort('name', teammateSort, setTeammateSort)}>Nombre</Th>
                                                   <Th sortKey="record" sortConfig={teammateSort} onSort={() => handleSort('record', teammateSort, setTeammateSort)}>Récord</Th>
-                                                  <Th sortKey="impactScore" sortConfig={teammateSort} onSort={() => handleSort('impactScore', teammateSort, setTeammateSort)} hasTooltip tooltipText="Mide el impacto general de este compañero. Considera los resultados del equipo, tus goles/asistencias, y también los goles/asistencias que este jugador aporta.">Índice</Th>
+                                                  <Th sortKey="impactScore" sortConfig={teammateSort} onSort={() => handleSort('impactScore', teammateSort, setTeammateSort)} hasTooltip tooltipText="Mide el impacto general de este compañero.">Índice</Th>
                                                   <Th sortKey="matchesPlayed" sortConfig={teammateSort} onSort={() => handleSort('matchesPlayed', teammateSort, setTeammateSort)}>PJ</Th>
                                                   <Th sortKey="winRate" sortConfig={teammateSort} onSort={() => handleSort('winRate', teammateSort, setTeammateSort)}>% Vic.</Th>
                                                   <Th sortKey="contributionsPerMatch" sortConfig={teammateSort} onSort={() => handleSort('contributionsPerMatch', teammateSort, setTeammateSort)}>G+A/P</Th>
@@ -498,10 +544,10 @@ export const DuelsPage: React.FC = () => {
                                               <tr>
                                                   <Th style={styles.stickyColumn} sortKey="name" sortConfig={opponentSort} onSort={() => handleSort('name', opponentSort, setOpponentSort)}>Nombre</Th>
                                                   <Th sortKey="record" sortConfig={opponentSort} onSort={() => handleSort('record', opponentSort, setOpponentSort)}>Récord</Th>
-                                                  <Th sortKey="impactScore" sortConfig={opponentSort} onSort={() => handleSort('impactScore', opponentSort, setOpponentSort)} hasTooltip tooltipText="Mide tu rendimiento contra este rival. Considera los resultados del equipo, tus goles/asistencias, y también el impacto de los goles/asistencias de este jugador en tu contra.">Índice</Th>
+                                                  <Th sortKey="impactScore" sortConfig={opponentSort} onSort={() => handleSort('impactScore', opponentSort, setOpponentSort)} hasTooltip tooltipText="Mide tu rendimiento contra este rival.">Índice</Th>
                                                   <Th sortKey="matchesPlayed" sortConfig={opponentSort} onSort={() => handleSort('matchesPlayed', opponentSort, setOpponentSort)}>PJ</Th>
                                                   <Th sortKey="winRate" sortConfig={opponentSort} onSort={() => handleSort('winRate', opponentSort, setOpponentSort)}>% Vic.</Th>
-                                                  <Th sortKey="myContributionsPerMatch" sortConfig={opponentSort} onSort={() => handleSort('myContributionsPerMatch', opponentSort, setOpponentSort)}>Mis G+A/P</Th>
+                                                  {!isTennisOrPaddle && <Th sortKey="myContributionsPerMatch" sortConfig={opponentSort} onSort={() => handleSort('myContributionsPerMatch', opponentSort, setOpponentSort)}>Mis G+A/P</Th>}
                                               </tr>
                                           </thead>
                                           <tbody>
@@ -519,14 +565,14 @@ export const DuelsPage: React.FC = () => {
                                                           <td style={{...styles.td, textAlign: 'center', fontWeight: 'bold', color: p.impactScore > 0 ? theme.colors.win : p.impactScore < 0 ? theme.colors.loss : theme.colors.primaryText}}>{p.impactScore.toFixed(2)}</td>
                                                           <td style={{...styles.td, textAlign: 'center'}}>{p.matchesPlayed}</td>
                                                           <td style={{...styles.td, textAlign: 'center'}}>{p.winRate.toFixed(1)}%</td>
-                                                          <td style={{...styles.td, textAlign: 'center'}}>{p.myContributionsPerMatch.toFixed(2)}</td>
+                                                          {!isTennisOrPaddle && <td style={{...styles.td, textAlign: 'center'}}>{p.myContributionsPerMatch.toFixed(2)}</td>}
                                                       </tr>
                                                   );
                                               })}
                                           </tbody>
                                       </table>
                                   )}
-                                  {activeTab === 'players' && (
+                                  {activeTab === 'players' && !isTennisOrPaddle && (
                                       <table style={styles.table}>
                                           <thead>
                                               <tr>

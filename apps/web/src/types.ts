@@ -13,6 +13,10 @@ export interface PlayerPerformance {
 }
 
 export interface Match {
+  sport: SportType;
+  sport: SportType;
+  sport: SportType;
+  sport: SportType;
   id: string;
   date: string;
   result: MatchResult;

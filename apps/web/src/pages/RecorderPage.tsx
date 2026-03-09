@@ -286,10 +286,10 @@ const RecorderPage: React.FC = () => {
           <div style={styles.controlsContainer}>
             <MatchListControls resultFilter={resultFilter} setResultFilter={setResultFilter} sortBy={sortBy} setSortBy={setSortBy} isDesktop={isDesktop} availableTournaments={availableTournaments} tournamentFilter={tournamentFilter} setTournamentFilter={setTournamentFilter} years={availableYears} selectedYear={selectedYear} onSelectYear={setSelectedYear} />
           </div>
-          <MatchList matches={filteredAndSortedMatches} allMatches={matches} allPlayers={allPlayers} onDeleteMatch={handleDeleteMatchClick} onEditMatch={handleEditMatch} sortBy={sortBy} isReadOnly={false} onImportClick={handleImportClick} />
+          <MatchList matches={filteredAndSortedMatches} allMatches={sportMatches} allPlayers={allPlayers} onDeleteMatch={handleDeleteMatchClick} onEditMatch={handleEditMatch} sortBy={sortBy} isReadOnly={false} onImportClick={handleImportClick} />
         </div>
       </main>
-      {lastAddedMatch && ( <PostMatchModal match={lastAddedMatch} matches={matches} onClose={handleCloseModal} playerProfile={playerProfile} /> )}
+      {lastAddedMatch && ( <PostMatchModal match={lastAddedMatch} matches={sportMatches} onClose={handleCloseModal} playerProfile={playerProfile} /> )}
       {matchToEdit && ( <EditMatchModal isOpen={!!matchToEdit} onClose={() => setMatchToEdit(null)} onSave={handleSaveEdit} match={matchToEdit} allPlayers={allPlayers} availableTournaments={availableTournaments} /> )}
       <ConfirmationModal isOpen={!!matchToDelete} onClose={() => setMatchToDelete(null)} onConfirm={confirmDeleteMatch} title="Eliminar partido" message="¿Estás seguro de que quieres eliminar este partido? Esta acción no se puede deshacer y afectará a tus estadísticas." />
       <ProfileSetupModal isOpen={isProfileSetupOpen} onClose={() => { setIsProfileSetupOpen(false); setPendingMatchData(null); }} onComplete={handleProfileSetupComplete} />

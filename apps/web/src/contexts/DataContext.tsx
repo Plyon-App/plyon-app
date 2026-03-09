@@ -11,6 +11,7 @@ import { db } from '../firebase/config'; // Importar db para verificar si existe
 
 interface DataContextType {
   matches: Match[];
+  sportMatches: Match[];
   goals: Goal[];
   customAchievements: CustomAchievement[];
   aiInteractions: AIInteraction[];
@@ -105,6 +106,11 @@ export const DataProvider: React.FC<{ children: ReactNode; initialData?: any; re
   const [currentSport, setCurrentSport] = useLocalStorage<SportType>('currentSport', 'football');
   const [activeSports, setActiveSports] = useLocalStorage<SportType[]>('activeSports', ['football']);
 
+  // Filtrar matches por deporte actual
+  const sportMatches = useMemo(() => {
+    return matches.filter(m => m.sport === currentSport);
+  }, [matches, currentSport]);
+
   const addActiveSport = (sport: SportType) => {
     if (!activeSports.includes(sport)) {
       setActiveSports([...activeSports, sport]);
@@ -188,7 +194,7 @@ export const DataProvider: React.FC<{ children: ReactNode; initialData?: any; re
   };
 
   const addMatch = async (matchData: Omit<Match, 'id'>): Promise<Match> => {
-      const newMatch = { ...matchData, id: uuidv4() };
+      const newMatch = { ...matchData, sport: matchData.sport || currentSport, id: uuidv4() };
       setMatches(prev => [newMatch, ...prev]);
       
       if (playerProfile.stats) {
@@ -238,7 +244,7 @@ export const DataProvider: React.FC<{ children: ReactNode; initialData?: any; re
           setPlayerProfile(prev => ({ ...prev, stats }));
       }
 
-      if (user && db) await firebaseService.matchesService.delete(user.uid, id);
+      if (user && db) await firebaseService.matchesService.delete(user.uid, id, matchToDelete.sport);
   };
 
   const addGoal = (goal: Omit<Goal, 'id'>) => {
@@ -256,13 +262,13 @@ export const DataProvider: React.FC<{ children: ReactNode; initialData?: any; re
   const addCustomAchievement = (ach: Omit<CustomAchievement, 'id'>) => {
       const newAch = { ...ach, id: uuidv4() };
       setCustomAchievements(prev => [...prev, newAch]);
-      if (user && db) firebaseService.overwriteCloudData(user.uid, { matches, goals, customAchievements: [...customAchievements, newAch], aiInteractions, tournaments, playerProfile, isOnboardingComplete });
+      if (user && db) firebaseService.overwriteCloudData(user.uid, { matches, sportMatches, goals, customAchievements: [...customAchievements, newAch], aiInteractions, tournaments, playerProfile, isOnboardingComplete });
   };
 
   const deleteCustomAchievement = async (id: string) => {
       const newAchs = customAchievements.filter(a => a.id !== id);
       setCustomAchievements(newAchs);
-      if (user && db) firebaseService.overwriteCloudData(user.uid, { matches, goals, customAchievements: newAchs, aiInteractions, tournaments, playerProfile, isOnboardingComplete });
+      if (user && db) firebaseService.overwriteCloudData(user.uid, { matches, sportMatches, goals, customAchievements: newAchs, aiInteractions, tournaments, playerProfile, isOnboardingComplete });
   };
 
   const addAIInteraction = async (type: string, content: any) => {
@@ -395,7 +401,7 @@ export const DataProvider: React.FC<{ children: ReactNode; initialData?: any; re
   const generateShareLink = async (page: string, filters?: any) => {
       if (!user || !db) throw new Error("Debes iniciar sesión para compartir.");
       const snapshot = {
-          matches, goals, customAchievements, playerProfile, tournaments
+          matches, sportMatches, goals, customAchievements, playerProfile, tournaments
       };
       const shareId = await firebaseService.createSharedView(snapshot, page, filters);
       return `${window.location.origin}/?shareId=${shareId}`;

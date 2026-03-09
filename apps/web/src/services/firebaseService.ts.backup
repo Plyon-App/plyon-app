@@ -33,26 +33,18 @@ import { v4 as uuidv4 } from 'uuid';
 // MATCHES/ACTIVITIES SERVICE (V2)
 // ==========================================
 export const matchesService = {
-    // Helper para obtener colección por deporte
-    getCollectionName: (sport: SportType): string => {
-        return `${sport}_activities`;
-    },
     add: async (userId: string, match: Match) => {
         if (!db) return;
         // Nueva colección: football_activities
-        const collectionName = matchesService.getCollectionName(match.sport);
-        await setDoc(doc(db, 'users', userId, collectionName, match.id), match);
+        await setDoc(doc(db, 'users', userId, 'football_activities', match.id), match);
     },
     update: async (userId: string, match: Match) => {
         if (!db) return;
-        const collectionName = matchesService.getCollectionName(match.sport);
-        await updateDoc(doc(db, 'users', userId, collectionName, match.id), match as any);
+        await updateDoc(doc(db, 'users', userId, 'football_activities', match.id), match as any);
     },
-    delete: async (userId: string, matchId: string, sport: SportType) => {
+    delete: async (userId: string, matchId: string) => {
         if (!db) return;
-        // NOTE: delete ahora requiere sport como parámetro
-        const collectionName = matchesService.getCollectionName(sport);
-        await deleteDoc(doc(db, 'users', userId, collectionName, matchId));
+        await deleteDoc(doc(db, 'users', userId, 'football_activities', matchId));
     }
 };
 
@@ -110,32 +102,13 @@ export const subscribeToUserData = (userId: string, callback: (data: any) => voi
     });
 
     // Listener for Football Activities (V2)
-    let footballMatches: Match[] = [];
-    let tennisMatches: Match[] = [];
-    let paddleMatches: Match[] = [];
-    
-    const emitAllMatches = () => {
-        const allMatches = [...footballMatches, ...tennisMatches, ...paddleMatches]
-            .sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime());
-        callback({ matches: allMatches });
-    };
-
-    const qFootball = query(collection(db, 'users', userId, 'football_activities'), orderBy('date', 'desc'));
-    const footballUnsub = onSnapshot(qFootball, (snapshot) => {
-        footballMatches = snapshot.docs.map(d => ({ ...d.data(), sport: 'football' } as Match));
-        emitAllMatches();
-    });
-
-    const qTennis = query(collection(db, 'users', userId, 'tennis_activities'), orderBy('date', 'desc'));
-    const tennisUnsub = onSnapshot(qTennis, (snapshot) => {
-        tennisMatches = snapshot.docs.map(d => ({ ...d.data(), sport: 'tennis' } as Match));
-        emitAllMatches();
-    });
-
-    const qPaddle = query(collection(db, 'users', userId, 'paddle_activities'), orderBy('date', 'desc'));
-    const paddleUnsub = onSnapshot(qPaddle, (snapshot) => {
-        paddleMatches = snapshot.docs.map(d => ({ ...d.data(), sport: 'paddle' } as Match));
-        emitAllMatches();
+    const qMatches = query(
+        collection(db, 'users', userId, 'football_activities'), 
+        orderBy('date', 'desc')
+    );
+    const matchesUnsub = onSnapshot(qMatches, (snapshot) => {
+        const matches = snapshot.docs.map(d => d.data() as Match);
+        callback({ matches });
     });
 
     // Listener for Football Goals (V2)
@@ -172,9 +145,7 @@ export const subscribeToUserData = (userId: string, callback: (data: any) => voi
 
     return () => {
         userUnsub();
-        footballUnsub();
-        tennisUnsub();
-        paddleUnsub();
+        matchesUnsub();
         goalsUnsub();
         tournamentsUnsub();
         achievementsUnsub();

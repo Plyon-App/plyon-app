@@ -2,7 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { useTheme } from '../../contexts/ThemeContext';
 import { Match } from '../../types';
 import Card from '../common/Card';
-import TennisSummaryWidget from './stats/TennisSummaryWidget';
+// import TennisSummaryWidget from './stats/TennisSummaryWidget';
 import TennisStreaksWidget from './stats/TennisStreaksWidget';
 import TennisActivityCalendar from './stats/TennisActivityCalendar';
 import TennisHistoricalAnalysis from './stats/TennisHistoricalAnalysis';
@@ -33,7 +33,7 @@ const TennisStats: React.FC<TennisStatsProps> = ({ matches }) => {
   ];
 
   const widgetComponents: Record<WidgetId, React.ReactNode> = { 
-      summary: <TennisSummaryWidget matches={matches} />, 
+      summary: null // <TennisSummaryWidget matches={matches} />, 
       streaks: <TennisStreaksWidget matches={matches} />, 
       calendar: <TennisActivityCalendar matches={matches} />, 
       historical: <Card title={<>Desglose histórico <SectionHelp steps={historicalGuide} /></>}><TennisHistoricalAnalysis matches={matches} /></Card>

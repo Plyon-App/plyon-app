@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useMemo } from 'react';
 import type { Match } from '../../../types';
 import { useTheme } from '../../../contexts/ThemeContext';
 import { ChevronIcon } from '../../icons/ChevronIcon';
@@ -30,7 +30,7 @@ const monthOrder = [
 const TennisHistoricalAnalysis: React.FC<TennisHistoricalAnalysisProps> = ({ matches }) => {
   const { theme } = useTheme();
 
-  const statsByYearAndMonth = React.useMemo(() => {
+  const statsByYearAndMonth = useMemo(() => {
     const data: Record<string, Record<string, MonthlyStats>> = {};
     
     matches.forEach(match => {

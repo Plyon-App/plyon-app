@@ -217,21 +217,23 @@ export const overwriteCloudData = async (userId: string, data: any) => {
 export const updateProfile = async (userId: string, data: Partial<PlayerProfileData>) => {
     if (!db) return;
     
-    const { activeWorldCupMode, worldCupProgress, worldCupHistory, qualifiersProgress, qualifiersHistory, ...cleanData } = data as any;
+    // Filtrar campos obsoletos que no deberían guardarse
+    const { 
+        activeWorldCupMode, 
+        worldCupProgress, 
+        worldCupHistory,
+        qualifiersProgress,
+        qualifiersHistory,
+        ...cleanData 
+    } = data as any;
+    
     const updateData: any = { ...cleanData };
     
-    if (data.level !== undefined || data.xp !== undefined || data.careerPoints !== undefined) {
-        updateData["sports.football.level"] = data.level;
-        updateData["sports.football.xp"] = data.xp;
-        updateData["sports.football.careerPoints"] = data.careerPoints;
-        delete updateData.level; delete updateData.xp; delete updateData.careerPoints;
-    }
-    
+    // Search fields
     if (data.name) updateData.searchName = data.name.toLowerCase();
     if (data.username) updateData.searchUsername = data.username.toLowerCase();
-    if (data.email) updateData.searchEmail = data.email.toLowerCase();
-    
-    await setDoc(doc(db, "users", userId), updateData, { merge: true });
+
+    await setDoc(doc(db, 'users', userId), updateData, { merge: true });
 };
 
 export const getOneTimeUserData = async (userId: string) => {

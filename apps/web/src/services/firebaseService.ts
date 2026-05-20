@@ -204,7 +204,12 @@ export const updateProfile = async (userId: string, data: Partial<PlayerProfileD
     if (data.name) updateData.searchName = data.name.toLowerCase();
     if (data.username) updateData.searchUsername = data.username.toLowerCase();
 
-    await setDoc(doc(db, 'users', userId), updateData, { merge: true });
+    // ✅ Eliminar cualquier campo undefined antes de guardar en Firestore
+    const sanitized = Object.fromEntries(
+        Object.entries(updateData).filter(([_, v]) => v !== undefined)
+    );
+
+    await setDoc(doc(db, 'users', userId), sanitized, { merge: true });
 };
 
 export const getOneTimeUserData = async (userId: string) => {
